@@ -1,0 +1,14 @@
+Package: rSCR
+Type: Package
+Title: R functions for contributing to the Synapse Commons Repository
+Version: 1.0-1
+Date: 2012-01-03
+Author: Brig Mecham, Matt Furia, Bruce Hoff
+Maintainer: Brig Mecham <brig.mecham@sagebase.org>
+Description: These functions crawl repositories, simple URLs, and cloud based storage options like S3 buckets.  Their purpose is to translate the corresponding data into studies and data in the Synapse Commons Repository Project.
+Depends: R (>= 2.13.0), synapseClient, RCurl
+Imports: RJSONIO
+SystemRequirements: Perl
+License: GNU
+LazyLoad: yes
+Suggests: RUnit
