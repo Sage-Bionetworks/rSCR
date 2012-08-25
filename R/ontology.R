@@ -106,18 +106,18 @@ loadSynonyms <- function(synDir='/Users/brig.mecham/Documents/workspace/metaGEO/
 }
 
 #
-key2value <- loadKeyValues()
-syn2value <- loadSynonyms()
-#
-mat <- read.table( '~/metaGEO/GSE2990_metadata.xls',
-		sep="\t",
-		header=TRUE, 
-		stringsAsFactors=FALSE, 
-		quote="")
-mat[sample(nrow(mat),10),2] <- 'adenocarcinoma-very_poorly_differentiated'
-mat[sample(nrow(mat),10),2] <- 'adnocrcnma'
-mat[sample(nrow(mat),10),4] <- 'madeUp'
-res <- standardizeMatrix(mat,key2value, syn2value)
+#key2value <- loadKeyValues()
+#syn2value <- loadSynonyms()
+##
+#mat <- read.table( '~/metaGEO/GSE2990_metadata.xls',
+#		sep="\t",
+#		header=TRUE, 
+#		stringsAsFactors=FALSE, 
+#		quote="")
+#mat[sample(nrow(mat),10),2] <- 'adenocarcinoma-very_poorly_differentiated'
+#mat[sample(nrow(mat),10),2] <- 'adnocrcnma'
+#mat[sample(nrow(mat),10),4] <- 'madeUp'
+#res <- standardizeMatrix(mat,key2value, syn2value)
 
 #
 #createSQLiteOntology <- function(synapseId='syn310033') {
