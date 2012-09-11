@@ -134,22 +134,6 @@ setMethod(
           clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_barcode", all.x=TRUE)
         }
         cat("Total:", nrow(mage.tab), " Found: ", id[2], " Column: ", colnames(mage.tab)[id[1]],"\n")
-#		if(sum(colnames(mage.tab) == "Comment..Aliquot.UUID.") > 0 & sum(colnames(clinicalMerged) == "bcr_aliquot_uuid") > 0){  
-#			mage.tab[,"Comment..Aliquot.UUID."] <- tolower(mage.tab[,"Comment..Aliquot.UUID."])
-#			cns <- which(colnames(mage.tab) != "Comment..Aliquot.UUID.")
-#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Comment..Aliquot.UUID.", by.x="bcr_aliquot_uuid", all.x=TRUE)
-#		}else if(sum(colnames(mage.tab) == "Extract.Name") > 0 ){
-#			cns <- which(colnames(mage.tab) != "Extract.Name")
-#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Extract.Name", by.x="bcr_aliquot_barcode", all.x=TRUE)
-#		}else if(sum(colnames(mage.tab) == "Source.Name") > 0){
-#			cns <- which(colnames(mage.tab) != "Source.Name")
-#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Source.Name", by.x="bcr_aliquot_barcode", all.x=TRUE)			
-#		}else{
-#			cat("Found nothing for", mageLayers[i,"entity.name"],"\n")
-#		}		
 	}
 	clinicalMerged
 }
