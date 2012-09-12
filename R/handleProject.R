@@ -11,11 +11,12 @@ setMethod(
 		f = "handleProject",
 		signature = signature("character"),
 		definition = function(project) {
+			tmpProj <- project
 			project <- try(getEntity(project),silent=TRUE)
-			if(class(project) != "Project" | class(project) != "Folder"){
+			if(class(project) != "Project" & class(project) != "Folder"){
 				# We could create the project for the user instead of stopping the session.  Requires more input
         # like a name, etc.
-				stop("User provided project id ", project, " does not exist.\nPlease provide a valid Synapse ID or object of class project.")
+				stop("User provided project id ", tmpProj, " does not exist.\nPlease provide a valid Synapse ID or object of class project.")
 			}
 			return(project)
 		}
