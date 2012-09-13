@@ -104,7 +104,7 @@ setMethod(
 		return(clinicalMerged)
 	}
 	mageLayers <- mageLayers[which(!grepl('tissue_images',mageLayers$entity.name)),]
-	mageLayers <- mageLayers[which(!grepl('RPPA',mageLayers$entity.name)),]
+#	mageLayers <- mageLayers[which(!grepl('RPPA',mageLayers$entity.name)),]
 	mageLayers <- mageLayers[which(!grepl('IlluminaGA_DNASeq',mageLayers$entity.name)),]
 	mageLayers <- .findLargestVersions(mageLayers)  
 	for(i in 1:nrow(mageLayers)){
@@ -119,34 +119,27 @@ setMethod(
 		}
 		sdrf.file <- paste(ent$cacheDir,'/',list.files(ent$cacheDir,pattern="sdrf")[1],sep="")
 		mage.tab <- .read(sdrf.file)
-		id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_barcode)
-		if(id[2] == 0) {
-			id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_uuid)
-			cns <- setdiff(1:ncol(mage.tab), id[2])
+		if(grepl('MDA_RPPA', ent$cacheDir)){
+			mage.tab <- mage.tab[which(!duplicated(mage.tab$Sample.Name)),]
+			id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_shipment_portion_uuid)
+			cns <- setdiff(1:ncol(mage.tab), id[1])
 			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_uuid", all.x=TRUE)
+			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_shipment_portion_uuid", all.x=TRUE)
+			cat("Total:", nrow(mage.tab), " Found: ", id[2], " Column: ", colnames(mage.tab)[id[1]],"\n")
 		}else{
-			cns <- setdiff(1:ncol(mage.tab), id[2])
-			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_barcode", all.x=TRUE)
+			id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_barcode)
+			if(id[2] == 0) {
+				id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_uuid)
+				cns <- setdiff(1:ncol(mage.tab), id[1])
+				colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+				clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_uuid", all.x=TRUE)
+			}else{
+				cns <- setdiff(1:ncol(mage.tab), id[1])
+				colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+				clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_barcode", all.x=TRUE)
+			}
+			cat("Total:", nrow(mage.tab), " Found: ", id[2], " Column: ", colnames(mage.tab)[id[1]],"\n")
 		}
-		cat("Total:", nrow(mage.tab), " Found: ", id[2], " Column: ", colnames(mage.tab)[id[1]],"\n")
-#		if(sum(colnames(mage.tab) == "Comment..Aliquot.UUID.") > 0 & sum(colnames(clinicalMerged) == "bcr_aliquot_uuid") > 0){  
-#			mage.tab[,"Comment..Aliquot.UUID."] <- tolower(mage.tab[,"Comment..Aliquot.UUID."])
-#			cns <- which(colnames(mage.tab) != "Comment..Aliquot.UUID.")
-#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Comment..Aliquot.UUID.", by.x="bcr_aliquot_uuid", all.x=TRUE)
-#		}else if(sum(colnames(mage.tab) == "Extract.Name") > 0 ){
-#			cns <- which(colnames(mage.tab) != "Extract.Name")
-#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Extract.Name", by.x="bcr_aliquot_barcode", all.x=TRUE)
-#		}else if(sum(colnames(mage.tab) == "Source.Name") > 0){
-#			cns <- which(colnames(mage.tab) != "Source.Name")
-#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Source.Name", by.x="bcr_aliquot_barcode", all.x=TRUE)			
-#		}else{
-#			cat("Found nothing for", mageLayers[i,"entity.name"],"\n")
-#		}		
 	}
 	clinicalMerged
 }
