@@ -11,7 +11,7 @@ setMethod(
 		definition = function(entity){
 			if(entity=="all") {
 				# Get all TCGA datasets
-				studies <- synapseQuery('select * from study where study.repository == "TCGA" and study.parentId == "syn150935"')
+				studies <- synapseQuery('select * from study where study.repository == "TCGA" and study.parentId == "syn1124721"')
 				studiesMG <- synapseQuery('select * from study where study.repository == "TCGA" and study.parentId == "syn275039"')
 				studies <- studies[match(studiesMG$study.acronym, studies$study.acronym),]
 				mergedData <- list()
@@ -26,10 +26,7 @@ setMethod(
 					file.name <- paste(studies$study.acronym[i],"_mergedClinical.txt",sep="")
 					write.table(mergedData[[i]], file.name, sep="\t",quote=FALSE, row.names=FALSE)
 					qry <- synapseQuery(paste('select id, name from entity where entity.name=="',
-                                              gsub(".txt",'',file.name),'" and entity.parentId=="', studiesMG$study.id[i],'"',sep=""))
-#                    deleteEntity(qry$entity.id)
-#					qry <- synapseQuery(paste('select id, name from entity where entity.name=="',
-#                                             gsub(".txt",'',file.name),'" and entity.parentId=="', studiesMG$study.id[i],'"',sep=""))                    
+									gsub(".txt",'',file.name),'" and entity.parentId=="', studiesMG$study.id[i],'"',sep=""))
 					if(is.null(qry)){
 						data <- Data(list(parentId=studiesMG$study.id[i],
 										name=gsub(".txt",'',file.name),
@@ -81,7 +78,7 @@ setMethod(
 	clinicalLayers <- synapseQuery(paste('select * from entity where entity.tcgaLevel == "clinical" and entity.parentId == "', studyId, '"', sep=''))						
 	id2load <- grep("^clinical_public", clinicalLayers$entity.name,perl=TRUE)[1]
 	if(is.na(id2load)){
-	  var <- paste('Cannot find file beginning with clinical_public for ',studyId) 
+		var <- paste('Cannot find file beginning with clinical_public for ',studyId) 
 		class(var) <- 'try-error'
 		return(var)
 	}
@@ -122,25 +119,41 @@ setMethod(
 		}
 		sdrf.file <- paste(ent$cacheDir,'/',list.files(ent$cacheDir,pattern="sdrf")[1],sep="")
 		mage.tab <- .read(sdrf.file)
-        id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_barcode)
-        if(id[2] == 0) {
-          id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_uuid)
-          cns <- setdiff(1:ncol(mage.tab), id[2])
-          colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-          clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_uuid", all.x=TRUE)
-        }else{
-          cns <- setdiff(1:ncol(mage.tab), id[2])
-          colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
-          clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_barcode", all.x=TRUE)
-        }
-        cat("Total:", nrow(mage.tab), " Found: ", id[2], " Column: ", colnames(mage.tab)[id[1]],"\n")
+		id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_barcode)
+		if(id[2] == 0) {
+			id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_aliquot_uuid)
+			cns <- setdiff(1:ncol(mage.tab), id[2])
+			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_uuid", all.x=TRUE)
+		}else{
+			cns <- setdiff(1:ncol(mage.tab), id[2])
+			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_aliquot_barcode", all.x=TRUE)
+		}
+		cat("Total:", nrow(mage.tab), " Found: ", id[2], " Column: ", colnames(mage.tab)[id[1]],"\n")
+#		if(sum(colnames(mage.tab) == "Comment..Aliquot.UUID.") > 0 & sum(colnames(clinicalMerged) == "bcr_aliquot_uuid") > 0){  
+#			mage.tab[,"Comment..Aliquot.UUID."] <- tolower(mage.tab[,"Comment..Aliquot.UUID."])
+#			cns <- which(colnames(mage.tab) != "Comment..Aliquot.UUID.")
+#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Comment..Aliquot.UUID.", by.x="bcr_aliquot_uuid", all.x=TRUE)
+#		}else if(sum(colnames(mage.tab) == "Extract.Name") > 0 ){
+#			cns <- which(colnames(mage.tab) != "Extract.Name")
+#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Extract.Name", by.x="bcr_aliquot_barcode", all.x=TRUE)
+#		}else if(sum(colnames(mage.tab) == "Source.Name") > 0){
+#			cns <- which(colnames(mage.tab) != "Source.Name")
+#			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
+#			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y="Source.Name", by.x="bcr_aliquot_barcode", all.x=TRUE)			
+#		}else{
+#			cat("Found nothing for", mageLayers[i,"entity.name"],"\n")
+#		}		
 	}
 	clinicalMerged
 }
 
 .findColumnToMergeOn <- function(mage.tab,y){
-  cts <- apply(mage.tab,2,function(x){ sum(x %in% y)})
-  c(which.max(cts), max(cts))
+	cts <- apply(mage.tab,2,function(x){ sum(x %in% y)})
+	c(which.max(cts), max(cts))
 }
 
 .findLargestVersions <- function(allLayers){ 
@@ -223,7 +236,9 @@ setMethod(
 		id <- which(colnames(file) == "bcr_patient_barcode")
 		string <- 'bcr_patient_barcode'
 	}
+	# Are there multiple rows per bcr_patient_barcode?
 	num.dup <- sum(duplicated(file[,id]))
+	
 	if(num.dup > 0){ 
 		otherIds <-setdiff(1:ncol(file), id)
 		sapply(otherIds, function(x){
@@ -261,5 +276,12 @@ setMethod(
 }
 
 .read <- function(file) {
-	read.delim(file, header=TRUE, stringsAsFactors=FALSE,quote="")
+	fileContents <- read.delim(file, 
+			header=TRUE, 
+			stringsAsFactors=FALSE,
+			quote="",strip.white=TRUE, 
+			na.strings=c("[Not Available]", "[Not Reported]", "[Not Applicable]", "<-"))
+	idx <- which(!( apply(fileContents, 2, function(x) sum(!is.na(x)) < 1) | apply(fileContents, 2, function(x) length(unique(x))==1) ))
+	fileContents <- fileContents[,idx]
 }
+
