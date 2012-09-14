@@ -122,6 +122,9 @@ setMethod(
 		if(grepl('MDA_RPPA', ent$cacheDir)){
 			mage.tab <- mage.tab[which(!duplicated(mage.tab$Sample.Name)),]
 			id <- .findColumnToMergeOn(mage.tab, clinicalMerged$bcr_shipment_portion_uuid)
+			if(id[2] == 0){
+				next;
+			}
 			cns <- setdiff(1:ncol(mage.tab), id[1])
 			colnames(mage.tab)[cns] <- paste(gsub('.mage-tab',"",mageLayers$types[i]),colnames(mage.tab)[cns],sep="-")
 			clinicalMerged <- merge(clinicalMerged, mage.tab, by.y=colnames(mage.tab)[id[1]], by.x="bcr_shipment_portion_uuid", all.x=TRUE)
