@@ -217,12 +217,14 @@ setMethod(
 	master.updated <- merge(master, sdrf, by.x="bcr_aliquot_barcode",by.y=colnames(sdrf)[id], all.x=TRUE)
 	return(master.updated)
 }
-
 .handleDuplicates <- function(fileName, master){
 	if(!file.exists(fileName)) {
 		stop("Cannot find file\n");
 	}
 	file <- .read(fileName)
+	if(is.null(nrow(file))){
+		return(master)
+	}
 	string <- "bcr_sample_barcode"
 	id <- which(colnames(file) == "bcr_sample_barcode")
 	if(length(id) == 0) {
