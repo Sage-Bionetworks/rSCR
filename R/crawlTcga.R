@@ -1,8 +1,9 @@
 
 
-crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TRUE,clinicalOnly=FALSE, debug=FALSE){
+crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE, debug=FALSE){
 	# Define the header
 	header <- c("study.name\tacronym\ttissueType\trepository\tdisease\tspecies\tstudy.numPatients\tdata.url\tdata.name\tdata.md5\tdata.type\tdata.platform\tdata.status\tdata.add\tdata.lastUpdate\tdata.numSamples\tdata.tcgaLevel")
+  # Write out the header and define the base url for the public or private sites.
 	if(isTRUE(private)){
 		url <- "https://tcga-data-secure.nci.nih.gov/tcgafiles/tcga4yeo/tumor/"
 		write.table(header, file="tcgaPrivate.txt", quote=FALSE, row.names=FALSE, col.names=FALSE, append=FALSE)
@@ -10,13 +11,53 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 		url <- "https://tcga-data.nci.nih.gov/tcgafiles/ftp_auth/distro_ftpusers/anonymous/tumor/"
 		write.table(header, file="tcga.txt", quote=FALSE, row.names=FALSE, col.names=FALSE, append=FALSE)
 	}
+	# Crawl the site
 	links <- .getLinks(url,debug=debug,user=user,pwd=pwd,clinicalOnly=clinicalOnly,private=private)
+	# Write out and store the crawled content.
 	if(isTRUE(private)){
 		tcga <- read.table("tcgaPrivate.txt",sep="\t",header=TRUE,stringsAsFactors=FALSE)
+		res <- .storetcgaInSynapse(tcga, private, fname='tcgaPrivate.txt')
 	}else{
 		tcga <- read.table("tcga.txt",sep="\t",header=TRUE,stringsAsFactors=FALSE)
+		res <- .storetcgaInSynapse(tcga, private, fname='tcga.txt')
 	}
 	return(tcga)
+}
+
+.storetcgaInSynapse <- function(tcga, private=FALSE, fname='tcga.txt'){ 
+	# Adds new TCGA layers to the SCR
+	entName <- 'tcgaPublicCrawlerOutput'
+	if(private=="TRUE"){
+		entName <- 'tcgaPrivateCrawlerOutput'
+	}
+	qry <- synapseQuery(paste('select id, name from entity where entity.name=="',entName,'" and entity.parentId=="syn1452692"', sep=""))
+	if(!is.null(qry)){
+		tcgaCrawlerEntity <- getEntity(qry$entity.id)
+	}else{
+		tcgaCrawlerEntity <- Data(list(name = entName, parentId = 'syn1452692'))
+	}
+	tcgaCrawlerEntity <- addFile(tcgaCrawlerEntity,fname)
+	tcgaCrawlerEntity <- addObject(tcgaCrawlerEntity,tcga)
+	if(is.null(qry)){
+		tcgaCrawlerEntity <- createEntity(tcgaCrawlerEntity)		
+	}else{
+		tcgaCrawlerEntity <- updateEntity(tcgaCrawlerEntity)
+	}
+	tcgaCrawlerEntity <- storeEntity(tcgaCrawlerEntity)
+}
+
+
+
+.getURL <- function(url, curlHandle){
+	# getURL robust to server side errors.
+	response <- "error"
+	class(response) <- 'try-error'
+	i <- 1
+	while(class(response) == "try-error"){
+		if(i > 1){ cat("\rattempt",i) }
+		response <- getURL(url, curl = curlHandle)
+	}
+	return(response)
 }
 
 .loadFiles <- function(){
@@ -26,7 +67,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 	tcgaAnnotations <- tcgaAnnotations[,-k]
 	rownames(tcgaAnnotations) <- tolower(tcgaAnnotations[,2])
 	sapply(rownames(tcgaAnnotations), function(x){ 
-			paste(tcgaAnnotations[x,],collapse="\t")
+				paste(tcgaAnnotations[x,],collapse="\t")
 			}) -> res
 	return(res)
 }
@@ -42,21 +83,21 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 				return(NA)
 			}
 		}else{
-				if(!grepl("https://tcga-data-secure.nci.nih.gov/tcgafiles/tcga4yeo/tumor/gbm",url) & url != "https://tcga-data-secure.nci.nih.gov/tcgafiles/tcga4yeo/tumor/"){
-					return(NA)
-				}
+			if(!grepl("https://tcga-data-secure.nci.nih.gov/tcgafiles/tcga4yeo/tumor/gbm",url) & url != "https://tcga-data-secure.nci.nih.gov/tcgafiles/tcga4yeo/tumor/"){
+				return(NA)
+			}
 		}
 	}
 	h = getCurlHandle(header = FALSE, userpwd = paste(user,pwd,sep=":"), netrc = TRUE)
-	text <- getURL(url, curl = h)
+	text <- .getURL(url, curl = h)
 	# Find all links
 	links.and.dates <- regmatches(text,
-			gregexpr('<a href=\\\"[^"]+\\\">[^<]+<\\/a>\\s+\\d+-[^-]+-\\d+',text))[[1]]
+			gregexpr('<a href=\\\"[^"]+\\\">[^<]+<\\/a>\\s+\\d+-[^-]+-\\d+',text))[[1]]	
 	links <- unlist(regmatches(links.and.dates,
 					gregexpr('<a href=\\\"[^"]+\\\">[^<]+<',links.and.dates)))
 	# Drop the ones we don't care about
 	drop <- grepl("abi",links) + grepl("pathology",links) + grepl('Name<',links) + grepl('microsat_i',links) + grepl('Last modified<',links) + grepl('Size<',links) + grepl('Parent',links) + grepl('diagnostic_images',links) + grepl("stanford.edu",links)
-# Get the ones we want to follow or push to Synapse
+ # Get the ones we want to follow or push to Synapse
 	links <- links[drop == 0]
 	if(isTRUE(clinicalOnly)){
 		drop <- grepl('cgcc',links) + grepl('gsc', links)
@@ -94,7 +135,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 .handleDataLinks <- function(url, links,tcgaAnnotations, dates,user="anonymous",pwd="anonymous", private=FALSE){
 	platforms <- .loadPlatformKey()
 	types <- .loadTypeKey()
-  split.urls <- strsplit(url,'/')[[1]]
+	split.urls <- strsplit(url,'/')[[1]]
 	platform <- split.urls[length(split.urls)-1]
 	type <- split.urls[length(split.urls)]
 	platform <- platforms[platform]
@@ -111,7 +152,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 					link <- links[x]
 					url2 <- paste(url,gsub(".tar.gz","",link),"/",sep="")
 					h = getCurlHandle(header = FALSE, userpwd = paste(user,pwd,sep=":"), netrc = TRUE)
-					text <- getURL(url2, curl = h)
+					text <- .getURL(url2, curl = h)
 					if(grepl("HTTP 404",text)){
 						num.files <- "NA"
 					}else{
@@ -124,7 +165,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 					date <- dates[x]
 					md5Link <- paste(c(url,link,".md5"),collapse="")
 					h = getCurlHandle(header = FALSE, userpwd = paste(user,pwd,sep=":"), netrc = TRUE)
-					text <- getURL(md5Link, curl = h )
+					text <- .getURL(md5Link, curl = h )
 					md5 <- strsplit(text,"\\s+",perl=TRUE)[[1]]
 					level <- .getTcgaLevel(md5[2])
 					if(grepl("mage",link)){
@@ -142,7 +183,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 					c(paste(c(url,md5[2]),collapse=""),md5[1])
 				}) -> dataLinks
 	}else{
-			dataLinks <- NA
+		dataLinks <- NA
 	}
 	return(dataLinks)
 }	
@@ -182,7 +223,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 		if(grepl('tissue_images', dataLink)){
 			md5Link <- paste(c(url,tar.gz,".md5"),collapse="")
 			h = getCurlHandle(header = FALSE, userpwd = paste(user,pwd,sep=":"), netrc = TRUE)
-			text <- getURL(md5Link, curl = h )
+			text <- .getURL(md5Link, curl = h )
 			md5 <- strsplit(text,"\\s+",perl=TRUE)[[1]][1]
 			dataAdd <- 'FALSE'
 		}
@@ -191,7 +232,7 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 		if(length(platform)==0){
 			platform <- "NA"
 		}
-
+		
 		output <- paste(c(tcgaAnnotations[[cancer.type]], dataLink, tar.gz, md5,type,platform, "raw",dataAdd,date,num.files,level),collapse="\t")	
 		if(isTRUE(private)){
 			write.table(output, file="tcgaPrivate.txt", quote=FALSE, row.names=FALSE, col.names=FALSE, append=TRUE)
@@ -204,45 +245,45 @@ crawlTcga <- function(user='anonymous',pwd='anonymous',private=FALSE,writeOut=TR
 
 .loadTypeKey<- function(){
 	types <- list(
-	RNASeq = 'E',
-	RNASeqV2 = 'E',
-	rnaseq=	'E',
-	miRNASeq=	'E',
-	transcriptome	='E',
-	fragment_analysis	=NA,
-	protein_exp	='P',
-	mutations ='G',
-	mirnaseq ='E',
-	mirna	='E',
-	snp	='G',
-	exon ='E',
-	slide_images='M',
-	clin ='C',
-	methylation	= 'G',
-	cna	= 'G')
+			RNASeq = 'E',
+			RNASeqV2 = 'E',
+			rnaseq=	'E',
+			miRNASeq=	'E',
+			transcriptome	='E',
+			fragment_analysis	=NA,
+			protein_exp	='P',
+			mutations ='G',
+			mirnaseq ='E',
+			mirna	='E',
+			snp	='G',
+			exon ='E',
+			slide_images='M',
+			clin ='C',
+			methylation	= 'G',
+			cna	= 'G')
 	return(types)
 }
 
 .loadPlatformKey <- function(){
 	platforms <- list(
-			'agilentg4502a_07_3'= "agilentg4502a_07_3",
+			'agilentg4502a_07_3'= "agilentg4502a_07",
 			'illuminahiseq_mirnaseq'= "illuminahiseq_mirnaseq",
 			'humanmethylation450'= "humanmethylation450",
 			'microsat_i'= "microsat_i",
 			'mda_rppa_core'= "mda_rppa_core",
 			'humanmethylation27'= "humanmethylation27",
-			'illuminadnamethylation_oma003_cpi'= "illuminadnamethylation_oma003_cpi",
+			'illuminadnamethylation_oma003_cpi'= "illuminadnamethylation",
 			'human1mduo'= "human1mduo",
 			'hg-u133_plus_2'= "hgu133plus2",
 			'illuminaga_mirnaseq'= "illuminaga_mirnaseq",
 			'illuminaga_dnaseq'= "illuminaga_dnaseq",
-			'agilentg4502a_07_1'= "agilentg4502a_07_1",
+			'agilentg4502a_07_1'= "agilentg4502a_07",
 			'huex-1_0-st-v2'= "huex10stv2",
-			'illuminadnamethylation_oma002_cpi'= "illuminadnamethylation_oma002_cpi",
+			'illuminadnamethylation_oma002_cpi'= "illuminadnamethylation",
 			'bcgsc.ca'= "bcgsc.ca",
 			'illuminaga_rnaseq'= "illuminaga_rnaseq",
 			'h-mirna_8x15k'= "h-mirna_8x15k",
-			'agilentg4502a_07_2'= "agilentg4502a_07_2",
+			'agilentg4502a_07_2'= "agilentg4502a_07",
 			'h-mirna_8x15kv2'= "h-mirna_8x15kv2",
 			'hg-cgh-244a'= "hg-cgh-244a",
 			'minbiotab'= "minbiotab",

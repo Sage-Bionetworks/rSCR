@@ -85,3 +85,4 @@ setMethod(
 	curlInfo <- getCurlInfo(curlHandle)
 	return(curlInfo$content.length.download)
 }
+

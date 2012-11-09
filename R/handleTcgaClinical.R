@@ -1,9 +1,4 @@
-#
-#  Should take as input a synpase entity ID.  maybe a tcga cancer name
-#  It will first get the clinical data layer from synapse.
-#  Next, it will make the big master file from these files.
-#  Then, it will add on the info for each of the SDRF files.
-#
+
 
 setMethod(
 		f = "handleTcgaClinical",
@@ -11,18 +6,18 @@ setMethod(
 		definition = function(entity){
 			if(entity=="all") {
 				# Get all TCGA datasets
-				studies <- synapseQuery('select * from study where study.repository == "TCGA" and study.parentId == "syn1124721"')
-				studiesMG <- synapseQuery('select * from study where study.repository == "TCGA" and study.parentId == "syn275039"')
-				studies <- studies[match(studiesMG$study.acronym, studies$study.acronym),]
-				mergedData <- list()
-				for( i in 1:nrow(studies)){
-					cat("\n\n\n", i, ":", studies$study.acronym[i],"\n\n\n")
-					studyId <- studies$study.id[i]
+				qry <- synapseQuery('select id, name from folder where folder.benefactorId == "syn1450028" and folder.name== "TCGA"')
+				folders <- synapseQuery(paste('select id, name, acronym from folder where folder.repository == "TCGA" and folder.parentId == "',qry$folder.id,'"',sep=""))				
+				ids <- sapply(paste("clinical_", tolower(unique(folders$folder.acronym)), ".tar.gz", sep=""), function(x){ synapseQuery(paste('select id, name from entity where entity.benefactorId=="syn1450028" and entity.name=="', x, '"',sep=""))})
+				ids <- ids[which(sapply(ids,length) != 0)]
+				for(i in 1:length(ids)){
+					clinicalId <- ids[[i]]$entity.id
 					mergedData[[i]] <- .oneTcgaCancer(studyId)
+					
 					if(class(mergedData[[i]]) == "try-error"){
 						next;
 					}
-					metadata <- mergedData[[i]]	
+					metadata <- mergedData[[i]]
 					file.name <- paste(studies$study.acronym[i],"_mergedClinical.txt",sep="")
 					write.table(mergedData[[i]], file.name, sep="\t",quote=FALSE, row.names=FALSE)
 					qry <- synapseQuery(paste('select id, name from entity where entity.name=="',
@@ -52,7 +47,7 @@ setMethod(
 				}
 				return(mergedData)
 			}else{
-				# Assume contribution is a specific layer ID
+				# Assume contribution is a specific entity ID
 				mergedData <- .oneTcgaCancer(entity)
 			}
 		}
@@ -70,19 +65,12 @@ setMethod(
 		f = "handleTcgaClinical",
 		signature = signature("Data"),
 		definition = function(entity){
-			.handleTcgaClinicalLayer(  entity )
+			.handleTcgaClinicalLayer(  propertyValue(entity, 'id'))
 		}
 )
 
-.oneTcgaCancer <- function(studyId){
-	clinicalLayers <- synapseQuery(paste('select * from entity where entity.tcgaLevel == "clinical" and entity.parentId == "', studyId, '"', sep=''))						
-	id2load <- grep("^clinical_public", clinicalLayers$entity.name,perl=TRUE)[1]
-	if(is.na(id2load)){
-		var <- paste('Cannot find file beginning with clinical_public for ',studyId) 
-		class(var) <- 'try-error'
-		return(var)
-	}
-	clinicalData <- loadEntity(clinicalLayers$entity.id[id2load])
+.oneTcgaCancer <- function(dataId){
+	clinicalData <- loadEntity(dataId)
 	cacheDir <- clinicalData$cacheDir
 	if(grepl("tar.gz",list.files(cacheDir)[1])) {
 		bn <- basename(tempfile())
@@ -176,12 +164,16 @@ setMethod(
 
 .handleTcgaClinicalLayer <- function(layer){ 
 	cacheDir <- layer$cacheDir
+	
 # Step 1: Load in aliquot file.
 	files <- dir(cacheDir, pattern = ".txt", full.names=TRUE)
 	if(!any(grepl("aliquot",files))) {
 		stop("No Aliquot file found\n");
 	}
-	aliquot.file <- files[grep("aliquot",files)]
+	
+	# First process just the biospecimen files
+	bioSpecimenFiles <- files[grep("biospecimen", files)]	
+	aliquot.file <- bioSpecimenFiles[grep("aliquot",bioSpecimenFiles)]
 	cat(aliquot.file, "\n")
 	master <- .read(aliquot.file)
 	
@@ -192,20 +184,46 @@ setMethod(
 						sample <- paste(obj[[1]][1:4], collapse="-")
 						c(patient, sample)
 					})) -> pat
-	colnames(pat) <- c("bcr_patient_barcode", "bcr_sample_barcode")
-	master.start <- master <- cbind(master, pat)
-#	cat("Master started with", nrow(master),"rows and", ncol(master),"columns\n");
-	for(i in 1:length(files)){
-		if(! grepl("aliquot",files[i])) {
-			cat("Adding file", files[i],"\n")
-			master <- .handleDuplicates(files[i], master)
-			#	cat("Master now has", nrow(master),"rows and", ncol(master),"columns\n");
-			#cat(i,"\n")
+	if(!any('bcr_patient_barcode' %in% names(master))){
+		patientBarcode <- sapply(master$bcr_aliquot_barcode, function(x){ y <- strsplit(x, '-'); paste(y[[1]][1:3], collapse="-")})
+		master$bcr_patient_barcode <- patientBarcode
+	}
+	if(!any('bcr_patient_barcode' %in% names(master))){
+		sampleBarcode <- sapply(master$bcr_aliquot_barcode, function(x){ y <- strsplit(x, '-'); paste(y[[1]][1:4], collapse="-")})
+		master$bcr_sample_barcode <- sampleBarcode
+	}
+	
+	for(i in 1:length(bioSpecimenFiles)){
+		if(! grepl("aliquot",bioSpecimenFiles[i])) {
+			cat("Adding file", bioSpecimenFiles[i],"\n")
+			master <- .handleDuplicates(bioSpecimenFiles[i], master)
 		}else{
-			#cat("Skipping",files[i],"\n")
 		}
 	}
 	master[,'bcr_aliquot_uuid'] <- tolower(master[,'bcr_aliquot_uuid'])
+		
+	# Now process the clinical files
+	# First thing here is to only keep the most up to date versions of the follow up files.
+	clinicalFiles <- files[grep("clinical", files)]	
+	ids <- grep("follow_up", clinicalFiles)
+	if(length(ids) > 1){
+		k <- which.max(as.numeric(gsub("v", "", unlist(regmatches(clinicalFiles[ids], gregexpr("v\\d+\\.\\d+", clinicalFiles[ids],perl=TRUE))))))
+		ids[-k]
+		clinicalFiles <- clinicalFiles[-ids[-k]]
+	}
+
+	# Load the patient file
+	patientFile <- clinicalFiles[grep("clinical_patient",clinicalFiles)]
+	master <- .read(patientFile)
+
+	for(i in 1:length(patientFile)){
+		if(! grepl("clinical_patient",clinicalFiles[i])) {
+			cat("Adding file", clinicalFiles[i],"\n")
+			master <- .handleDuplicates(clinicalFiles[i], master)
+		}
+	}
+
+#	Step 3: now merge in the remaining files
 	return(master)
 }
 
@@ -220,6 +238,11 @@ setMethod(
 	master.updated <- merge(master, sdrf, by.x="bcr_aliquot_barcode",by.y=colnames(sdrf)[id], all.x=TRUE)
 	return(master.updated)
 }
+
+
+
+
+
 .handleDuplicates <- function(fileName, master){
 	if(!file.exists(fileName)) {
 		stop("Cannot find file\n");
@@ -274,12 +297,18 @@ setMethod(
 }
 
 .read <- function(file) {
+	# Function reads in the files.  na.strings set to capture heterogeneity in TCGA file
 	fileContents <- read.delim(file, 
 			header=TRUE, 
 			stringsAsFactors=FALSE,
 			quote="",strip.white=TRUE, 
-			na.strings=c("[Not Available]", "[Not Reported]", "[Not Applicable]", "<-"))
+			na.strings=c('"null"', "null", "NA", '"NA"', "[Not Available]", "[Not Reported]", "[Not Applicable]", "[Pending]", "<-"))
 	idx <- which(!( apply(fileContents, 2, function(x) sum(!is.na(x)) < 1) | apply(fileContents, 2, function(x) length(unique(x))==1) ))
 	fileContents <- fileContents[,idx]
 }
+
+
+
+
+
 

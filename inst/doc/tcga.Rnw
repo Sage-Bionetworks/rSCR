@@ -1,0 +1,60 @@
+% \VignetteDepends{lme4, splines, corpcor}
+% \VignetteIndexEntry{snm Tutorial}
+% \VignettePackage{snm}
+\documentclass[11pt]{article}
+
+\usepackage{epsfig}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsxtra}
+\usepackage{graphicx,subfigure}
+\usepackage{vmargin}
+\usepackage{amsthm}
+\usepackage{hyperref}
+
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\texttt{#1}}}
+\newcommand{\Rclass}[1]{{\texttt{#1}}}
+\newcommand{\Rmethod}[1]{{\texttt{#1}}}
+\newcommand{\Rfunarg}[1]{{\texttt{#1}}}
+
+\parindent 0in
+\setpapersize{USletter}
+\setmarginsrb{1truein}{0.5truein}{1truein}{0.5truein}{16pt}{30pt}{0pt}{20truept}
+\setlength{\emergencystretch}{2em}
+\usepackage{Sweave}
+\begin{document}
+
+\title{Synapse Commons Repository R package}
+\author{Brig Mecham\\
+email: \texttt{brig.mecham@sagebase.org} }
+
+\maketitle
+\bibliographystyle{plain}
+\tableofcontents
+
+\section{Crawling TCGA}
+The crawlTcga() function will crawl both the public and private TCGA repositories.  If crawling the private site, the user must provide
+credentials via the user and pwd parameters as well as set the private paramter equal to TRUE.  For testing and development set the
+debug parameter equal to TRUE.  This tells the crawler to only crawl the GBM directory on the TCGA site. 
+
+\section{Contributing New TCGA Data}
+Once the crawler has been run we need to create data entities for any recently released TCGA data.  This can be accomplished by the 
+contributeTcga function.  This function requires a valid username and password to access the private TCGA data portal. 
+
+\section{Updating TCGA Data}
+Once the crawler has been run and the entities have been contributed to synapse, its now time to process any new data.
+This is accomplished via a two-step process.  First, we use the checkForNewData function.  This identifies the most recent 
+version of each tcga batch, and then checks whether any version is completely new or represents an update of what has been 
+previously processed.  If new data is identified, then we first process the corresponding batch, then update the corresponding
+cross-batch merged data.
+
+\section{Preprocessing metadata}
+Next we need to update the metadata.  This is accomplished via the handleTcgaMetdata function.  It grabs the most recent version of the 
+metadata and merges information into two matrices, one for the clinical and one for the experimental data.  It also builds specific versions
+of these files for each platform.  
+
+\end{document}

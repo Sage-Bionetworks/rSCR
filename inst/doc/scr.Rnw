@@ -1,0 +1,116 @@
+% \VignetteDepends{lme4, splines, corpcor}
+% \VignetteIndexEntry{snm Tutorial}
+% \VignettePackage{snm}
+\documentclass[11pt]{article}
+
+\usepackage{epsfig}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsxtra}
+\usepackage{graphicx,subfigure}
+\usepackage{vmargin}
+\usepackage{amsthm}
+\usepackage{hyperref}
+
+
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\texttt{#1}}}
+\newcommand{\Rclass}[1]{{\texttt{#1}}}
+\newcommand{\Rmethod}[1]{{\texttt{#1}}}
+\newcommand{\Rfunarg}[1]{{\texttt{#1}}}
+
+\parindent 0in
+\setpapersize{USletter}
+\setmarginsrb{1truein}{0.5truein}{1truein}{0.5truein}{16pt}{30pt}{0pt}{20truept}
+\setlength{\emergencystretch}{2em}
+\usepackage{Sweave}
+\begin{document}
+
+\title{Synapse Commons Repository R package}
+\author{Brig Mecham\\
+email: \texttt{brig.mecham@sagebase.org} }
+
+\maketitle
+\bibliographystyle{plain}
+\tableofcontents
+
+\section{Overview}
+
+The Synapse Common Repository (SCR) is a Synapse project designed to 
+enable research through distribution of analysis ready versions of data.
+All methods and curated data are provided free without any restrictions, 
+providing users with the ability to access tens of thousands of studies, 
+all processed with a single strategy, as well as curated metadata that 
+synchronizes vocabulary across studies.  
+
+A key component of the SCR is activating data.  We use the phrase data 
+activation to describe the process that begins with identifying the raw, 
+unprocessed versions of data, transforming them to account for the effects 
+of confounders and to perform useful summarizations that simplify 
+downstream analysis, and, finally, loading them into Synapse to facilitate their 
+use by the entire research community.  At the time of this writing we have activated 
+more than 10,000 distinct experiments from publicly available repositories, including 
+NCBI GEO, Array Express, TCGA, TG-Gate, as well as the recently released CCLE and 
+Sanger cell line compendiums.
+
+All of these data are made available through the SCR project, allowing anyone to 
+access them in seconds via the Synapse clients.  The purpose of the rSCR library is
+to provide a set of convenience functions for finding and accessing activated data sets.
+Many questions about these functions will hopefully be answered by the documentation or
+references.  As with any R package, detailed information on functions, their arguments and
+values, can be obtained in the help files.  Any questions or problems regarding the
+\Rpackage{rSCR} package will most efficiently be addressed by contacting us 
+at: \texttt{data.activation@sagebase.org}. 
+\\
+
+The remainder of this document is organized as follows.  In section \ref{Key Concepts} we 
+introduce a few key ideas.  In section \ref{File Layout} we describe the general layout of 
+activated data. In section \ref{Finding and Downloading Data} we describe 
+how to locate and then download data sets of interest in the SCR.  In section \ref{Adding Data}
+we describe how to add your data to the SCR.
+
+\section{Getting Started With Synapse}
+First, new users will need to create a Synapse account.  You don't a special account to acess the SCR,
+so if you've already created one then skip ahead.  Otherwise, follow this link to get an account:
+\texttt{https://synapse.sagebase.org/#LoginPlace:0}.
+
+Whenever you're accessing Synapse via the R client you'll need to log in.  If my username and password are
+john.doe@gmail.com and 'dataRox', then simply type the following:
+
+synapseLogin('john.doe@gmail.com', 'dataRox')
+
+If this is your first time working with Synapse 
+
+1. Synapse Account
+2. Loggin in
+3. Browsing in the web client
+4. Project, Folder, and Data entities
+5. Properties and annotations
+
+\section{Data Layout}
+1. Folders, data entities, and annotations
+2. Specific examples
+a. TCGA
+b. GEO
+c. Array Express
+3. ISCRM department
+
+\section{Finding and Downloading Data}
+1. Search by study name
+2. Search by tissue type
+3. Search by disease
+
+\section{Adding Data}
+1. Contact us.
+2. Do it yourself: folder / data entities, then contact us
+
+\section{Methods}
+1. SNM + SVA
+2. EPSA
+
+
+
+\end{document}
