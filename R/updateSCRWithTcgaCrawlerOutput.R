@@ -35,10 +35,13 @@ contributeTcga <- function(user='anonymous', pwd='anonymous') {
 	
 	# Remove any entities that have already been created	
 	createdByPrincipalId <- 273975
-	qry <- synapseQuery('select id, name from entity where entity.benefactorId == "syn1450028" and entity.repository == "TCGA"')
+	qry <- .bigQuery('select id, name from entity where entity.benefactorId == "syn1450028" and entity.repository == "TCGA"', limit=1000)
 	ids <- match(qry$entity.name, tcga$data.name)
 	if(any(!is.na(ids))){
 		tcga <- tcga[-ids[!is.na(ids)],]
+	}
+	if(nrow(tcga) == 0){
+		return("Everything up to date!")
 	}
 	
 	# Build the entities
@@ -56,6 +59,27 @@ contributeTcga <- function(user='anonymous', pwd='anonymous') {
 		}
 	}
 	return(ent)
+}
+
+
+.bigQuery <- function(qry, limit=100) 
+{
+	allQryRes <- matrix()
+	offset <- 1
+	for(i in 1:100000){
+		cat("\rQuery",i)
+		qryRes <- synapseQuery(paste(qry, 'limit', limit, 'offset', offset))
+		offset <- offset + limit 
+		if(i == 1){
+			allQryRes <- qryRes
+		}else{
+			allQryRes <- merge(allQryRes, qryRes, all=TRUE)
+		}
+		if(nrow(qryRes) != limit){
+			break;
+		}
+	}
+	allQryRes
 }
 
 
