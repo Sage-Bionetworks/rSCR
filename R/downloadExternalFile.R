@@ -17,7 +17,7 @@ downloadExternalFile <- function(entity, url, md5, maxFileSize=(20 * 1073741824)
 		}else{
 			entity <- createEntity(entity)
 			propertyValue(entity, 'md5') <- as.character(tools::md5sum(parsedURL[1]))
-			propertyValue(entity, 'locations') <- list(list(path=tcga$data.url[i], type="external"))
+			propertyValue(entity, 'locations') <- list(list(path=url, type="external"))
 			entity <- updateEntity(entity)
 		}
 		return(entity)
@@ -57,7 +57,7 @@ downloadExternalFile <- function(entity, url, md5, maxFileSize=(20 * 1073741824)
 	}else{
 		entity <- createEntity(entity)
 		propertyValue(entity, 'md5') <- as.character(tools::md5sum(parsedURL[1]))
-		propertyValue(entity, 'locations') <- list(list(path=tcga$data.url[i], type="external"))
+		propertyValue(entity, 'locations') <- list(list(path=url, type="external"))
 		entity <- updateEntity(entity)
 	}
 	return(entity)
@@ -85,3 +85,5 @@ downloadExternalFile <- function(entity, url, md5, maxFileSize=(20 * 1073741824)
 	destdir <- gsub("[\\/]+$", "", destdir)			
 	c(destfile, destdir)
 }
+
+

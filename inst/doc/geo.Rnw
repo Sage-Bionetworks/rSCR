@@ -28,7 +28,7 @@
 \usepackage{Sweave}
 \begin{document}
 
-\title{TCGA via the SCR}
+\title{NCBI GEO via the SCR}
 \author{Brig Mecham\\
 email: \texttt{brig.mecham@sagebase.org} }
 
@@ -36,14 +36,11 @@ email: \texttt{brig.mecham@sagebase.org} }
 \bibliographystyle{plain}
 \tableofcontents
 
-\section{Crawling TCGA}
-The crawlTcga() function will crawl both the public and private TCGA
-repositories.  If crawling the private site, the user must provide credentials
-via the user and pwd parameters as well as set the private paramter equal to
-TRUE.  For testing and development set the debug parameter equal to TRUE.  This
-tells the crawler to only crawl the GBM directory on the TCGA site.
+\section{Crawling GEO}
+The crawlNcbiGeo() function will crawl both the public NCBI GEO repository. 
+The output is stored as a tab-delimited file in Synapse.
 
-\section{Contributing New TCGA Data}
+\section{Adding data to Synapse}
 Once the crawler has been run we need to create data entities for any recently
 released TCGA data.  This can be accomplished by the contributeTcga function. 
 This function requires a valid username and password to access the private TCGA
@@ -55,12 +52,7 @@ its now time to process any new data. This is accomplished via a two-step
 process.  First, we use the findNewDataToProcess function.  This identifies the
 most recent version of each tcga batch, and then checks whether any version is
 completely new or represents an update of what has been previously processed. 
-New data that needs to be processed is then stored in a tab-delimited format in
-Synapse.
-
-The next step here is to write code that processes each batch.  Then write code
-that joins them into a single matrix.
-
+New data that needs to be processed is then stored in a tab-delimited format in Synapse.
 
 \section{Preprocessing metadata}
 Next we need to update the metadata.  This is accomplished via the
