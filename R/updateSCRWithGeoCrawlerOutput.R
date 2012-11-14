@@ -7,26 +7,23 @@ alreadyCreatedStudies <- synapseQuery('select id, name from study where study.pa
 
 # Filter out the ones we've already created.
 alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1453669"')
-inCommon <- intersect(alreadyCreatedFolders$entity.name, alreadyCreatedStudies$study.name)
-geo <- geo[setdiff(rownames(geo), union(inCommon, alreadyCreatedFolders$entity.name)),]
-
-geo <- geo[alreadyCreatedFolders$entity.name,]
-for(i in 1:nrow(alreadyCreatedFolders)){
-	cat("\r", i, "of", nrow(alreadyCreatedFolders))
-	folder <- getEntity(alreadyCreatedFolders$entity.id[i])
-	annotValue(folder, 'platform') = strsplit(geo$platform[i], ';')[[1]]
-	annotValue(folder, 'species') = strsplit(geo$species[i], ';')[[1]]
-	folder <- updateEntity(folder)
-	qry <- synapseQuery(paste('select id, name from entity where entity.parentId=="', propertyValue(folder, 'id'),'"',sep=""))	
-	raw <- getEntity(qry$entity.id)
-	propertyValue(raw, 'platform') = strsplit(geo$platform[i], ';')[[1]]
-	propertyValue(raw, 'species') = strsplit(geo$species[i], ';')[[1]]
-	raw <- updateEntity(raw)
-}
+geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
 
 # Anything that's new should be added
-for(i in 1:nrow(geo)){
+for(i in 5006:nrow(geo)){
 	cat("\n\n", i)
+	res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
+	numRetries <- 1;
+	while(class(res) == "try-error") {
+		res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
+		numRetries <- numRetries + 1
+		if(numRetries > 10){ 
+			stop("Tried 10 times to build the entity with no success!")
+		}
+	}
+}
+
+.contributeGeoStudy <- function(geo, i){
 	# For each geo study
 	# Create folder with content from crawler
 	folder <- Folder(list(parentId='syn1453669',
@@ -67,14 +64,16 @@ for(i in 1:nrow(geo)){
 			propertyValue(rawDataEntity, 'locations') <- propertyValue(existingRawDataEntity, 'locations')
 			rawDataEntity <- .inherit2(existingRawDataEntity, rawDataEntity)
 		}else{
-		# New data, so download to calculate md5.
+			# New data, so download to calculate md5.
 			rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i]) 
 		}
 	}else{
-	# New data, so download to calculate md5.
+		# New data, so download to calculate md5.
 		rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
 	}
 	rawDataEntity <- createEntity(rawDataEntity)
+	cat(propertyValue(rawDataEntity,'id'), "\n")
+	return(rawDataEntity)
 }
 
 .addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(20 * 1073741824), numRetries=20){
