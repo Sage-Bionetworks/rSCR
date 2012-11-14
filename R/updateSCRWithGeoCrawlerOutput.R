@@ -76,7 +76,7 @@ for(i in 5006:nrow(geo)){
 	return(rawDataEntity)
 }
 
-.addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(20 * 1073741824), numRetries=20){
+.addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(1 * 1073741824), numRetries=20){
 	destfile =  tempfile()
 	for(i in 1:numRetries) { # Try numRetries times to download.    
 		download <- try(synapseClient:::.curlWriterDownload(url,destfile))
