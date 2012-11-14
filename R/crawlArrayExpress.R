@@ -118,7 +118,7 @@ return(urls)
 	accession <- sapply(obj, function(x){ x$accession})
 	
 	sapply(obj, function(x){ 
-				if(length(x$arraydesign)>1 & is.null(names(x$arraydesign))){ 
+				if(length(x)>1 & is.null(names(x$arraydesign))){ 
 					paste(sapply(x$arraydesign, function(y){ y$accession}),collapse=",")
 				}else{
 					x$arraydesign$accession
