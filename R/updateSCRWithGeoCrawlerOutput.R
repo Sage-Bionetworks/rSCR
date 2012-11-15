@@ -13,7 +13,7 @@ alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.
 geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
 
 # Anything that's new should be added
-for(i in 5001:nrow(geo)){
+for(i in 2:nrow(geo)){
 	cat("\n\n", i)
 	res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
 	numRetries <- 1;

@@ -1,18 +1,12 @@
-###############################################################
-#  This function crawls the array express database.
-#  Accepts an object of class project.
-#  Returns a list of lists, with each sublist describing
-#  a distinct layer for a dataset.
-###############################################################
 
-crawlArrayExpress <- function(project) {
+crawlArrayExpress <- function() {
 # Load valid array express platforms.
-	ae.input.file <- paste(file.path(.path.package("rSCR"),"extdata"),"/arrayExpressPlatforms.txt",sep="")
-	aE.platformMap <- read.table(ae.input.file,stringsAsFactors=FALSE, row.names=1, sep="\t", header=TRUE)
+	aeInputFile <- paste(file.path(.path.package("rSCR"),"extdata"),"/arrayExpressPlatforms.txt",sep="")
+	aePlatformMap <- read.table(aeInputFile,stringsAsFactors=FALSE, row.names=1, sep="\t", header=TRUE)
 	
 	# Access the array express database through the JSON API, then parse the object.
 	arrayExpressJSON <- .getArrayExpressJSON()
-	parsedArrayExpressJSON <- .parseAEJsonObject(arrayExpressJSON, aE.platformMap)
+	parsedArrayExpressJSON <- .parseAEJsonObject(arrayExpressJSON,aePlatformMap)
 	
 	# Now we get all the URLs for the raw data layers of each study
 	# Unfortunately an indeterminate # of raw data layers exist for each dataset.
@@ -110,7 +104,27 @@ return(urls)
 	names(res) <- accession	
 }
 
-.parseAEJsonObject <- function(obj, aE.platformMap){
+.parseAEJsonObject <- function(arrayExpressJSON,aePlatformMap){
+	
+	sort(unique(unlist(sapply(arrayExpressJSON, function(x){ names(x)}))))
+	[1] "accession"          "arraydesign"        "assays"            
+	[4] "bibliography"       "bioassaydatagroup"  "description"       
+	[7] "experimentalfactor" "experimentdesign"   "experimenttype"    
+	[10] "fgemdatafiles"      "id"                 "lastupdatedate"    
+	[13] "miamescores"        "minseqescores"      "name"              
+	[16] "protocol"           "provider"           "rawdatafiles"      
+	[19] "releasedate"        "sampleattribute"    "samples"           
+	[22] "secondaryaccession" "species"            "submissiondate"    
+	
+	
+	# Get the study name, url, description, 
+	species <- sapply(arrayExpressJSON, function(x){ paste(unlist(x$species), collapse=",")})
+	accession <- sapply(arrayExpressJSON, function(x){ x$accession })
+	samples <- sapply(arrayExpressJSON, function(x){ x$samples})
+	arraydesign <- sapply(arrayExpressJSON, function(x){ x$arraydesign })
+	description <- sapply(arrayExpressJSON, function(x){ paste(unlist(x$description), collapse=" ")}) 
+	sapply(list(species, accession, samples, arraydesign, description), length)
+	
 	rawDataAvailable <- unlist(sapply(obj, 
 					function(x){ x$rawdatafiles}))
 	not.available <- which(! rawDataAvailable )
