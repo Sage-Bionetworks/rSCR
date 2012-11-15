@@ -1,3 +1,6 @@
+source("~/login.R"); 
+source("~/dataActLogin.R")
+
 # run and return output from the GEO crawler. 
 geoCrawlerOutput <- loadEntity('syn1468623');# crawlNcbiGeo()
 geo <- geoCrawlerOutput$objects$geo
@@ -10,20 +13,21 @@ alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.
 geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
 
 # Anything that's new should be added
-for(i in 5006:nrow(geo)){
+for(i in 5001:nrow(geo)){
 	cat("\n\n", i)
 	res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
 	numRetries <- 1;
 	while(class(res) == "try-error") {
 		res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
 		numRetries <- numRetries + 1
-		if(numRetries > 10){ 
-			stop("Tried 10 times to build the entity with no success!")
+		if(numRetries > 4){ 
+			#stop("Tried 10 times to build the entity with no success!")
+			break;
 		}
 	}
 }
 
-.contributeGeoStudy <- function(geo, i){
+.contributeGeoStudy <- function(geo, i, maxFileSize=(1 * 1073741824)){
 	# For each geo study
 	# Create folder with content from crawler
 	folder <- Folder(list(parentId='syn1453669',
@@ -52,7 +56,8 @@ for(i in 5006:nrow(geo)){
 					'platform' = strsplit(geo$platform[i], ';')[[1]],
 					'species' = strsplit(geo$species[i], ';')[[1]]))
 	annotValue(rawDataEntity, 'repository') <- 'NCBI GEO'
-	annotValue(rawDataEntity, 'fileSize') <- .prettifyFileSize(.getFileSize(geo$layer.url[i]))
+	fileSizeInBytes <- .getFileSize(geo$layer.url[i])
+	annotValue(rawDataEntity, 'fileSize') <- .prettifyFileSize(fileSizeInBytes)
 	if(!is.na(id)){
 		# Study exists, so raw data might be there already.
 		qry <- synapseQuery(paste('select id, name from entity where entity.parentId=="', propertyValue(studyEntity, 'id'),'"',sep=""))
@@ -65,11 +70,19 @@ for(i in 5006:nrow(geo)){
 			rawDataEntity <- .inherit2(existingRawDataEntity, rawDataEntity)
 		}else{
 			# New data, so download to calculate md5.
-			rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i]) 
+			if(fileSizeInBytes < maxFileSize){
+				rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
+			}else{
+				return(folder)
+			}
 		}
 	}else{
 		# New data, so download to calculate md5.
-		rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
+		if(fileSizeInBytes < maxFileSize){
+			rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
+		}else{
+			return(folder)
+		}
 	}
 	rawDataEntity <- createEntity(rawDataEntity)
 	cat(propertyValue(rawDataEntity,'id'), "\n")
@@ -77,6 +90,13 @@ for(i in 5006:nrow(geo)){
 }
 
 .addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(1 * 1073741824), numRetries=20){
+	fileSize <- .getFileSize(url)
+	if(fileSize > maxFileSize){
+		# File is more than 20GB large.
+		var <- paste("File too large.  Will not download files larger than ", .prettifyFileSize(maxFileSize),".\n");
+		class(var) <- "try-error"
+		return(var)
+	}
 	destfile =  tempfile()
 	for(i in 1:numRetries) { # Try numRetries times to download.    
 		download <- try(synapseClient:::.curlWriterDownload(url,destfile))
@@ -130,7 +150,7 @@ for(i in 5006:nrow(geo)){
 #		annotValue(folder, tolower(propertyValue(study, 'disease'))) <- TRUE
 		annotValue(folder, 'disease') <- tolower(propertyValue(study, 'disease'))
 	}
-
+	
 	if('tissueType' %in% names(properties(study))){
 #		annotValue(folder, tolower(propertyValue(study, 'tissueType'))) <- TRUE
 		annotValue(folder, 'tissueType') <- tolower(propertyValue(study, 'tissueType'))	
@@ -151,5 +171,4 @@ for(i in 5006:nrow(geo)){
 	}
 	return(data2)
 }
-
 
