@@ -1,6 +1,9 @@
 
 crawlArrayExpress <- function() {
-# Load valid array express platforms.
+	# Function crawls the array express repository.
+	# Returns a list, each element is a valid study.
+	
+	# Load valid array express platforms.
 	aeInputFile <- paste(file.path(.path.package("rSCR"),"extdata"),"/arrayExpressPlatforms.txt",sep="")
 	aePlatformMap <- read.table(aeInputFile,stringsAsFactors=FALSE, row.names=1, sep="\t", header=TRUE)
 	
@@ -8,114 +11,81 @@ crawlArrayExpress <- function() {
 	arrayExpressJSON <- .getArrayExpressJSON()
 	parsedArrayExpressJSON <- .parseAEJsonObject(arrayExpressJSON,aePlatformMap)
 	
-	# Now we get all the URLs for the raw data layers of each study
-	# Unfortunately an indeterminate # of raw data layers exist for each dataset.
-	# So, we are forced to figure out by brute force.
-	arrayExpressURLs <- .getArrayExpressRawDataURLs(parsedArrayExpressJSON)
-	
-	# Now create the arrayExpress matrix that we want to write to a file.
-	arrayExpress <- list()
-	total.urls <- sum(sapply(arrayExpressURLs,length))
-	arrayExpress <- vector("list", total.urls)
-	counter <- 1	
-	for(i in 1:length(arrayExpressURLs)){
-		x <- arrayExpressURLs[[i]]
-		dataset <- names(arrayExpressURLs[i])
-		for(j in 1:length(x)){
-			arrayExpress[counter] <- parsedArrayExpressJSON[dataset]
-			arrayExpress[[counter]]$data.url <- x[j]
-			arrayExpress[[counter]]$data.name <- paste(parsedArrayExpressJSON[[dataset]]$dataset.name,"raw data layer",j)
-			counter <- counter+1
-		}
-	}
-	arrayExpress <- t(sapply(arrayExpress, function(x){ unlist(x)}))
-	colnames(arrayExpress) <- gsub("layer","data",colnames(arrayExpress))
-	colnames(arrayExpress) <- gsub("dataset","study",colnames(arrayExpress))
-	arrayExpress <- arrayExpress[,-2]
-	arrayExpress[,"description"] <- gsub("\n","",arrayExpress[,"description"])
-	arrayExpress <- cbind(arrayExpress, rep("Array Express",nrow(arrayExpress)))
-	colnames(arrayExpress)[ncol(arrayExpress)] <- "repository"
+	# Now we add the URLs for the raw data layers of each study
+	arrayExpress <- .getArrayExpressRawDataURLs(parsedArrayExpressJSON)
+	arrayExpress <- .storeArrayExpressInSynapse(arrayExpress)
+	# Return the list. 
 	return(arrayExpress)
 }
 
-.getArrayExpressRawDataURLs <- function(output) {
-	urls <- vector("list", length(output))
-	names(urls) <- names(output)
-	for(i in 1:length(output)){
-		cat("\r",i, "\t", names(output)[i])
-		obj <- output[[i]]
-		if(obj$rawDataAvailable  == FALSE){
-			urls[[i]] <- "Not Available"
-		}else{
-			url <- try(getURL(paste("http://www.ebi.ac.uk/arrayexpress/json/v2/files/", obj$dataset.name, sep = "")))
-			if(class(url)=="try-error"){
-				urls[[i]] <- 'Not Available'
-				next;
-			}
-			files <- fromJSON(url)
-			# If multiple file exist, find the slot that corresponds to just these samples.
-			experiment <- NA
-			if(files$files$"total-experiments" > 1){ 
-				experiment <- files$files$experiment[[which(sapply(files$files$experiment, function(x){ x$accession}) == obj$dataset.name)]]
-			}else{
-				experiment <- files$files$experiment
-			}
-			urls[[i]] <- sapply(experiment$file, function(x) {
-						if (!is.null(x$kind)) {
-							if (x$kind == "raw") {
-								x$url
-							}
-							else {
-								NA
-							}
-						}
-						else {
-							NA
-						}
-					})
-			urls[[i]] <- urls[[i]][which(!is.na(urls[[i]]))]
-		}
+.storeArrayExpressInSynapse <- function(arrayExpress){ 
+	# Adds the output of the GEO crawler to Synapse
+	entName <- 'arrayExpressPublicCrawlerOutput'
+	qry <- synapseQuery(paste('select id, name from entity where entity.name=="',entName,'" and entity.parentId=="syn1452692"', sep=""))
+	if(!is.null(qry)){
+		arrayExpressCrawlerEntity <- loadEntity(qry$entity.id)
+	}else{
+		arrayExpressCrawlerEntity <- Data(list(name = entName, parentId = 'syn1452692'))
 	}
-	
-return(urls)
+	arrayExpressCrawlerEntity <- addObject(arrayExpressCrawlerEntity,arrayExpress)
+	if(is.null(qry)){
+		arrayExpressCrawlerEntity <- createEntity(arrayExpressCrawlerEntity)		
+	}else{
+		arrayExpressCrawlerEntity <- updateEntity(arrayExpressCrawlerEntity)
+	}
+	arrayExpressCrawlerEntity <- storeEntity(arrayExpressCrawlerEntity)
+	return(arrayExpressCrawlerEntity)
 }
 
-.getProvider <- function(obj){
-	accession <- sapply(obj, function(x){ x$accession})
-	sapply(obj, function(x){
-				contact=''
-				if(length(x$provider) == 3){ 
-					contact <- paste(x$provider,collapse=",")
+.getArrayExpressRawDataURLs <- function(output) {
+	# Function gets the URLs for the available raw data for each study. 
+	sapply(1:nrow(output), function(i){
+				cat("\r",i, "\t", output$accession[i])
+				if(output$rawDataAvailable[i]  == FALSE){
+					urls[[i]] <- "Not Available"
+					return(NA)
 				}else{
-					prov <- grep("submitter", x$provider)
-					inve <- grep("submitter", x$investigator)
-					ret <- NA
-					if(length(prov) > 0 & length(inve) > 0) {
-						contact <- paste(paste(x$provider[prov],collapse=","),
-								paste(x$provider[inve],collapse=","))
-					}else if(length(prov) > 0){
-						contact <- paste(x$provider[prov],collapse=",")
-					}else if(length(inve) > 0){
-						contact <- paste(x$provider[inve],collapse=",")
-					}
+					url <- try(getURL(paste("http://www.ebi.ac.uk/arrayexpress/experiments/", output$accession[i], sep = "")))
+					rawDataLinks <- regmatches(url,
+							gregexpr('<a href=\\\"[^"]+raw\\.\\d+\\.zip\\\">[^<]+<\\/a>',url))[[1]]
+					baseUrl <- 'http://www.ebi.ac.uk/arrayexpress/files/'
+					
+					links <- unlist(regmatches(rawDataLinks,
+									gregexpr('<a href=\\\"[^"]+\\\">[^<]+<',rawDataLinks)))
+					sapply(strsplit(rawDataLinks, '>'), function(x){ 
+								thisUrl <- paste(baseUrl, output$accession[i], '/', gsub("<\\/a", "", x[[2]], perl=TRUE), sep="")
+							}) -> allUrls
+					return(allUrls)
 				}
-				contact
-			}) -> res
-	names(res) <- accession	
+			}) -> urls
+	res <- list()
+	for(i in 1:length(urls)){
+		a <- list(name=output$accession[i],
+				species=output$species[i],
+				numSamples=output$samples[i],
+				description=output$description[i],
+				platform=output$platform[i],
+				urls = urls[[i]])
+		res[[i]] <- a
+	}
+	names(res) <- output$accession
+	return(res)
+}
+
+
+
+.translatePlatform <- function(map, platform){
+	# Simply maps the array express internal id to our common platform name
+	if(platform %in% names(map)){
+		return(as.character(unlist(map[platform])))
+	}else{
+		return(platform)
+	}
 }
 
 .parseAEJsonObject <- function(arrayExpressJSON,aePlatformMap){
-	
-	sort(unique(unlist(sapply(arrayExpressJSON, function(x){ names(x)}))))
-	[1] "accession"          "arraydesign"        "assays"            
-	[4] "bibliography"       "bioassaydatagroup"  "description"       
-	[7] "experimentalfactor" "experimentdesign"   "experimenttype"    
-	[10] "fgemdatafiles"      "id"                 "lastupdatedate"    
-	[13] "miamescores"        "minseqescores"      "name"              
-	[16] "protocol"           "provider"           "rawdatafiles"      
-	[19] "releasedate"        "sampleattribute"    "samples"           
-	[22] "secondaryaccession" "species"            "submissiondate"    
-	
+	# Build map from array express platform identifiers to SCR platform names
+	aeIdentifierToString <- split(aePlatformMap$String, aePlatformMap$GPL_ID)
 	
 	# Get the study name, url, description, 
 	species <- sapply(arrayExpressJSON, function(x){ paste(unlist(x$species), collapse=",")})
@@ -123,113 +93,37 @@ return(urls)
 	samples <- sapply(arrayExpressJSON, function(x){ x$samples})
 	arraydesign <- sapply(arrayExpressJSON, function(x){ x$arraydesign })
 	description <- sapply(arrayExpressJSON, function(x){ paste(unlist(x$description), collapse=" ")}) 
-	sapply(list(species, accession, samples, arraydesign, description), length)
-	
-	rawDataAvailable <- unlist(sapply(obj, 
-					function(x){ x$rawdatafiles}))
-	not.available <- which(! rawDataAvailable )
-	available <- which( rawDataAvailable )
-	accession <- sapply(obj, function(x){ x$accession})
-	
-	sapply(obj, function(x){ 
-				if(length(x)>1 & is.null(names(x$arraydesign))){ 
-					paste(sapply(x$arraydesign, function(y){ y$accession}),collapse=",")
+	rawdatafiles <- sapply(arrayExpressJSON, function(x){ x$rawdatafiles })
+	# Parse out the multiple platforms 
+	sapply(1:length(arraydesign), function(i){
+				x <- arraydesign[[i]]
+				lngth <- length(unlist(x[[1]]))
+				if(lngth == 1){
+					x <- unlist(x)
+					nms <- names(x)
+					id <- which(nms=="accession")
+					return(.translatePlatform(aeIdentifierToString, x[id]))
 				}else{
-					x$arraydesign$accession
+					# Multiple levels. Return each one
+					sapply(x, function(y){
+								y <- unlist(y)
+								nms <- names(y)
+								id <- which(nms=="accession")
+								.translatePlatform(aeIdentifierToString, y[id])
+							}) -> z
+					paste(unlist(z), collapse=",")
 				}
-			}) -> arrayDesignAccession
+			}) -> arrayAccessions
 	
-	sapply(obj, function(x){ 
-				if(length(x$arraydesign)>1 & is.null(names(x$arraydesign))){ 
-					vec <- sapply(x$arraydesign, function(y){ y$accession})
-				}else{
-					vec <- x$arraydesign$accession
-				}
-				ids <- which(vec %in% aE.platformMap[,4])
-				plats <- vec
-				plats[ids] <- aE.platformMap[match(vec[ids],aE.platformMap[,4]),2]
-				if(length(plats) > 1){ 
-					paste(plats,collapse=", ")
-				}else{
-					plats
-				}
-			}) -> platforms
-	
-	lastupdate <- sapply(obj, function(x){ x$lastupdatedate})
-	
-	sapply(obj, function(x){ 
-				if(length(x$species)>1){ 
-					paste(sapply(x$species, function(y){ y}),collapse=",")
-				}else{
-					x$species
-				}
-			}) -> species
-	
-	study <- sapply(obj, function(x){ x$name})
-	
-	rawdata <- unlist(sapply(obj, function(x){ x$rawdatafiles}))
-	
-	sapply(obj, function(x){ 
-				if(is.list(x$samples)){ 
-					sapply(x$samples, function(y) { 
-								y$samples
-							})
-				}else{
-					x$samples
-				}
-			}) -> samples
-	
-	emails <- sapply(obj, function(x){ 
-				if(is.list(x)){
-					x$provider[[1]]["email"]
-				}else{
-					x$provider["email"]
-				}})
-	
-	sapply(obj, function(x){ 
-				if(length(x$arraydesign)==2){ 
-					paste(sapply(x$arraydesign, function(y){ gsub("\\]","",gsub("[^\\[]+\\[","",y$name,perl=TRUE),perl=TRUE)}),collapse=",")
-				}else{
-					gsub("\\]","",gsub("[^\\[]+\\[","",x$arraydesign$name,perl=TRUE),perl=TRUE)
-					
-				}
-			}) -> arrayDesignName
-	
-#	arrayExpress <- matrix("NA",nr=length(obj), nc=8)
-#	for( i in 1:length(obj)) {
-#		arrayExpress[i,1] <- accession[i]  
-#		arrayExpress[i,2] <- ifelse(is.null(arrayDesignAccession[[i]]),"NA", arrayDesignAccession[[i]])
-#		arrayExpress[i,3] <- ifelse(is.null(lastupdate[[i]]),"NA", lastupdate[[i]])
-#		arrayExpress[i,4] <- species[[i]]
-#		arrayExpress[i,5] <- study[[i]][1]
-#		arrayExpress[i,6] <- rawdata[[i]]
-#		arrayExpress[i,7] <- samples[[i]]
-#		arrayExpress[i,8] <- ifelse(is.null(emails[[i]][[1]]),"NA", emails[[i]])
-#		arrayExpress[i,8] <- ifelse(is.null(arrayDesignName[[i]]),"NA", arrayDesignName[[i]])
-#	}
-	
-	output <- list()
-	lapply(1:length(obj), function(i) {  
-				b <- list(
-						dataset.name = accession[i],
-						layer.url= paste("http://www.ebi.ac.uk/arrayexpress/experiments/",accession[i],sep=""),
-						lastUpdate = ifelse(is.null(lastupdate[[i]]),"NA", lastupdate[[i]]),
-						species = species[[i]],
-						description = study[[i]],
-						rawDataAvailable = rawdata[[i]],
-						dataset.numSamples = samples[[i]], 
-						contact = ifelse(is.null(emails[[i]]),"Not Available", emails[[i]]),
-						platform = platforms[i],
-						layer.status="raw",
-						layer.type="E")
-				b
-			}) -> output
-	names(output) <- accession
-	lapply(output, function(x){ 
-				x[which(is.na(x))] <- "Not Available"
-				x
-			}) -> output
-	output
+	# Join into a single data frame
+	obj <- data.frame(accession = accession,
+			species=species, 
+			samples=samples,
+			description=description,
+			platform=arrayAccessions, 
+			rawDataAvailable = rawdatafiles, stringsAsFactors=FALSE)
+	obj <- obj[which(obj$rawDataAvailable == "TRUE"),]
+	return(obj)
 }
 
 .getArrayExpressJSON <- function(){

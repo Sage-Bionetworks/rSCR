@@ -1,5 +1,3 @@
-source("~/login.R"); 
-source("~/dataActLogin.R")
 
 # run and return output from the GEO crawler. 
 geoCrawlerOutput <- loadEntity('syn1468623');# crawlNcbiGeo()
@@ -9,16 +7,16 @@ geo <- geoCrawlerOutput$objects$geo
 alreadyCreatedStudies <- synapseQuery('select id, name from study where study.parentId=="syn1124722"')
 
 # Filter out the ones we've already created.
-alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1453669"')
+alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1491485"')
 geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
 
 # Anything that's new should be added
-for(i in 2:nrow(geo)){
+for(i in 4:nrow(geo)){
 	cat("\n\n", i)
-	res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
+	res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
 	numRetries <- 1;
 	while(class(res) == "try-error") {
-		res <- try(.contributeGeoStudy(geo, i), silent=TRUE)
+		res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
 		numRetries <- numRetries + 1
 		if(numRetries > 4){ 
 			#stop("Tried 10 times to build the entity with no success!")
@@ -27,10 +25,9 @@ for(i in 2:nrow(geo)){
 	}
 }
 
-.contributeGeoStudy <- function(geo, i, maxFileSize=(1 * 1073741824)){
-	# For each geo study
+.createFolderForStudy <- function(geo, i){
 	# Create folder with content from crawler
-	folder <- Folder(list(parentId='syn1453669',
+	folder <- Folder(list(parentId='syn1491485',
 					name=rownames(geo)[i],
 					description = geo$description[i]))
 	annotValue(folder, 'numSamples') = as.numeric(geo$numSamples[i])
@@ -38,42 +35,63 @@ for(i in 2:nrow(geo)){
 	annotValue(folder, 'species') = strsplit(geo$species[i], ';')[[1]]
 	annotValue(folder, 'repository') <- 'NCBI GEO'
 	
-	# Inherit annotations / properties from study
-	# If folder is a study in SCR
+# Inherit annotations / properties from study
+# If folder is a study in SCR
 	id <- match(propertyValue(folder, 'name'), alreadyCreatedStudies$study.name)
 	if(!is.na(id)){
 		studyEntity <- getEntity(alreadyCreatedStudies$study.id[id])
-		folder <- .inherit(studyEntity, folder)
 		# Move metadata when available
 	}
-	# Create the folder
+# Create the folder
 	folder <- createEntity(folder)
-	
-	# Set the fileSize annotation
-	rawDataEntity <- Data(list(name='rawData', 
-					parentId=propertyValue(folder, 'id'),
+	return(folder)	
+}
+
+.createRawFolder <- function(geo, i, folder){
+	rawFolder <- Folder(list(parentId=propertyValue(folder, 'id'),
+					name='raw data',
+					description = geo$description[i]))
+	annotValue(rawFolder, 'numSamples') = as.numeric(geo$numSamples[i])
+	annotValue(rawFolder, 'platform') = strsplit(geo$platform[i], ';')[[1]]
+	annotValue(rawFolder, 'species') = strsplit(geo$species[i], ';')[[1]]
+	annotValue(rawFolder, 'repository') <- 'NCBI GEO'
+	rawFolder <- createEntity(rawFolder)
+	return(rawFolder)
+}
+
+.createRawDataEntity <- function(geo,i,folder,rawFolder){
+	rawDataEntity <- Data(list(name= paste(rownames(geo)[i],'_RAW.tar',sep=""),
+					parentId=propertyValue(rawFolder, 'id'),
 					'numSamples' = as.numeric(geo$numSamples[i]),
 					'platform' = strsplit(geo$platform[i], ';')[[1]],
 					'species' = strsplit(geo$species[i], ';')[[1]]))
 	annotValue(rawDataEntity, 'repository') <- 'NCBI GEO'
+	annotValue(rawDataEntity, 'status') <- 'raw'
+	annotValue(rawDataEntity, 'study') <- rownames(geo)[i]
 	fileSizeInBytes <- .getFileSize(geo$layer.url[i])
 	annotValue(rawDataEntity, 'fileSize') <- .prettifyFileSize(fileSizeInBytes)
+	return(rawDataEntity)
+}
+
+.addExternalLocation <- function(geo,i, rawDataEntity, alreadyCreatedStudies){
+	id <- match(rownames(geo)[i], alreadyCreatedStudies$study.name)
+	
 	if(!is.na(id)){
 		# Study exists, so raw data might be there already.
-		qry <- synapseQuery(paste('select id, name from entity where entity.parentId=="', propertyValue(studyEntity, 'id'),'"',sep=""))
+		qry <- synapseQuery(paste('select id, name from entity where entity.parentId=="', alreadyCreatedStudies$study.id[id], '"',sep=""))
 		# Create raw data link, check to see if it already exists, if so, simply move it 
 		if(any(grepl("raw", tolower(qry$entity.name)))){
 			id <- which(grepl("raw", tolower(qry$entity.name)))
 			existingRawDataEntity <- getEntity(qry$entity.id[id])
 			propertyValue(rawDataEntity, 'md5') <- propertyValue(existingRawDataEntity, 'md5')
 			propertyValue(rawDataEntity, 'locations') <- propertyValue(existingRawDataEntity, 'locations')
-			rawDataEntity <- .inherit2(existingRawDataEntity, rawDataEntity)
+			return(rawDataEntity)
 		}else{
 			# New data, so download to calculate md5.
 			if(fileSizeInBytes < maxFileSize){
 				rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
 			}else{
-				return(folder)
+				return(NA)
 			}
 		}
 	}else{
@@ -81,9 +99,27 @@ for(i in 2:nrow(geo)){
 		if(fileSizeInBytes < maxFileSize){
 			rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
 		}else{
-			return(folder)
+			return(NA)
 		}
 	}
+}
+
+.contributeGeoStudy <- function(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=NULL){
+	# For each geo study
+	folder <- .createFolderForStudy(geo, i)
+
+	# Create the raw folder
+	rawFolder <- .createRawFolder(geo, i, folder)
+	
+	# Create the raw data entity, but don't store in Synpase just yet.
+	rawDataEntity <- .createRawDataEntity(geo,i,folder,rawFolder)
+	
+	# Add the external locations, checking first to see if we've previously stored it in the old SCR.
+	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, alreadyCreatedStudies)
+	if(class(rawDataEntity) != "Data"){
+		return(NA)
+	}
+	# Create it in synapse
 	rawDataEntity <- createEntity(rawDataEntity)
 	cat(propertyValue(rawDataEntity,'id'), "\n")
 	return(rawDataEntity)
