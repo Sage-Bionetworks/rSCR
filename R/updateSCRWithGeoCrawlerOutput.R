@@ -11,7 +11,7 @@ alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.
 geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
 
 # Anything that's new should be added
-for(i in 4:nrow(geo)){
+for(i in 1:nrow(geo)){
 	cat("\n\n", i)
 	res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
 	numRetries <- 1;
@@ -73,9 +73,9 @@ for(i in 4:nrow(geo)){
 	return(rawDataEntity)
 }
 
-.addExternalLocation <- function(geo,i, rawDataEntity, alreadyCreatedStudies){
+.addExternalLocation <- function(geo,i, rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies){
 	id <- match(rownames(geo)[i], alreadyCreatedStudies$study.name)
-	
+	fileSizeInBytes <- .getFileSize(geo$layer.url[i])
 	if(!is.na(id)){
 		# Study exists, so raw data might be there already.
 		qry <- synapseQuery(paste('select id, name from entity where entity.parentId=="', alreadyCreatedStudies$study.id[id], '"',sep=""))
@@ -115,7 +115,7 @@ for(i in 4:nrow(geo)){
 	rawDataEntity <- .createRawDataEntity(geo,i,folder,rawFolder)
 	
 	# Add the external locations, checking first to see if we've previously stored it in the old SCR.
-	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, alreadyCreatedStudies)
+	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies)
 	if(class(rawDataEntity) != "Data"){
 		return(NA)
 	}

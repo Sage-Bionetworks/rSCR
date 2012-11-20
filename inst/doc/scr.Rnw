@@ -77,12 +77,12 @@ First, new users will need to create a Synapse account.  You don't a special acc
 so if you've already created one then skip ahead.  Otherwise, follow this link to get an account:
 \texttt{https://synapse.sagebase.org/#LoginPlace:0}.
 
-Whenever you're accessing Synapse via the R client you'll need to log in.  If my username and password are
-john.doe@gmail.com and 'dataRox', then simply type the following:
+Whenever you're accessing Synapse via the R client you'll need to log in.  For
+example, if my username and password are john.doe@gmail.com and 'dataRox', then
+simply type the following:
 
 synapseLogin('john.doe@gmail.com', 'dataRox')
 
-If this is your first time working with Synapse 
 
 1. Synapse Account
 2. Loggin in
