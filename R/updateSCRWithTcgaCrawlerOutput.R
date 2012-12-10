@@ -1,4 +1,4 @@
-contributeTcga <- function(user='anonymous', pwd='anonymous') {
+updateTcga <- function(user='anonymous', pwd='anonymous') {
 	parentId2='syn1450029'
 	entName <- 'tcgaPublicCrawlerOutput'
 	qry1 <- synapseQuery(paste('select id, name from entity where entity.name=="',entName,'" and entity.parentId=="syn1452692"', sep=""))

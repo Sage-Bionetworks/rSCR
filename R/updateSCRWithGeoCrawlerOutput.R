@@ -1,26 +1,26 @@
 
+updateGEO <- function(id){ 
 # run and return output from the GEO crawler. 
-geoCrawlerOutput <- loadEntity('syn1468623');# crawlNcbiGeo()
-geo <- geoCrawlerOutput$objects$geo
-
+	geoCrawlerOutput <- loadEntity('syn1468623');# crawlNcbiGeo()
+	geo <- geoCrawlerOutput$objects$geo	
 # Run a query to get the list of studies already created
-alreadyCreatedStudies <- synapseQuery('select id, name from study where study.parentId=="syn1124722"')
-
+	alreadyCreatedStudies <- synapseQuery('select id, name from study where study.parentId=="syn1124722"')
 # Filter out the ones we've already created.
-alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1491485"')
-geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
-
+	alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1491485"')
+	geo <- geo[setdiff(rownames(geo), alreadyCreatedFolders$entity.name),]
+	
 # Anything that's new should be added
-for(i in 4:nrow(geo)){
-	cat("\n\n", i)
-	res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
-	numRetries <- 1;
-	while(class(res) == "try-error") {
+	for(i in 1:nrow(geo)){
+		cat("\n\n", i)
 		res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
-		numRetries <- numRetries + 1
-		if(numRetries > 4){ 
-			#stop("Tried 10 times to build the entity with no success!")
-			break;
+		numRetries <- 1;
+		while(class(res) == "try-error") {
+			res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
+			numRetries <- numRetries + 1
+			if(numRetries > 10){ 
+				#stop("Tried 10 times to build the entity with no success!")
+				break;
+			}
 		}
 	}
 }
@@ -107,7 +107,7 @@ for(i in 4:nrow(geo)){
 .contributeGeoStudy <- function(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=NULL){
 	# For each geo study
 	folder <- .createFolderForStudy(geo, i)
-
+	
 	# Create the raw folder
 	rawFolder <- .createRawFolder(geo, i, folder)
 	

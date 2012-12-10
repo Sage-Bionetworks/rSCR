@@ -1,25 +1,27 @@
 
+updateArrayExpress <- function(id){ 
 # run and return output from the GEO crawler. 
-aeCrawlerOutput <- loadEntity('syn1488304');# crawlNcbiae()
-ae <- aeCrawlerOutput$objects$arrayExpress
-
+	aeCrawlerOutput <- loadEntity('syn1488304');
+	ae <- aeCrawlerOutput$objects$arrayExpress
+	
 # Filter out the ones we've already created.
-alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1488308"')
-if(!is.null(alreadyCreatedFolders )){
-	ae <- ae[setdiff(names(ae), alreadyCreatedFolders$entity.name)]
-}
-
+	alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1488308"')
+	if(!is.null(alreadyCreatedFolders )){
+		ae <- ae[setdiff(names(ae), alreadyCreatedFolders$entity.name)]
+	}
+	
 # Anything that's new should be added
-for(i in 1:length(ae)){
-	cat("\n\n", i)
-	res <- try(.contributeArrayExpressStudy(ae, i), silent=TRUE)
-	numRetries <- 1;
-	while(class(res) == "try-error") {
+	for(i in 1:length(ae)){
+		cat("\n\n", i)
 		res <- try(.contributeArrayExpressStudy(ae, i), silent=TRUE)
-		numRetries <- numRetries + 1
-		if(numRetries > 4){ 
-			#stop("Tried 10 times to build the entity with no success!")
-			break;
+		numRetries <- 1;
+		while(class(res) == "try-error") {
+			res <- try(.contributeArrayExpressStudy(ae, i), silent=TRUE)
+			numRetries <- numRetries + 1
+			if(numRetries > 4){ 
+				#stop("Tried 10 times to build the entity with no success!")
+				break;
+			}
 		}
 	}
 }

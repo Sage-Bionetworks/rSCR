@@ -33,17 +33,9 @@ The list has the following 6 items for each study.
 \author{
 Brig Mecham <brig.mecham@sagebase.org>
 }
-\note{
-%%  ~~further notes~~
-}
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
-
-\seealso{
-
-}
 \examples{
-arrayExpress <- crawlArrayExpress()
+% arrayExpress <- crawlArrayExpress()
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

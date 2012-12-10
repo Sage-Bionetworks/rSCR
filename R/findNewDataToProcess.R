@@ -1,6 +1,6 @@
 
 
-results <- findNewDataToProcess()
+#results <- findNewDataToProcess()
 
 findNewDataToProcess <- function(...){
 	qry <- synapseQuery('select id, name from folder where folder.parentId=="syn1450029"')
