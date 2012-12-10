@@ -1,10 +1,10 @@
 
-# run and return output from the GEO crawler. 
-aeCrawlerOutput <- loadEntity('syn1488304');# crawlNcbiae()
+# run and return output from the Array Express crawler. 
+aeCrawlerOutput <- loadEntity('syn1488304');
 ae <- aeCrawlerOutput$objects$arrayExpress
 
 # Filter out the ones we've already created.
-alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1488308"')
+alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1533267"')
 if(!is.null(alreadyCreatedFolders )){
 	ae <- ae[setdiff(names(ae), alreadyCreatedFolders$entity.name)]
 }
@@ -27,7 +27,7 @@ for(i in 1:length(ae)){
 .contributeArrayExpressStudy <- function(ae, i, maxFileSize=(1 * 1073741824)){
 	# For each ae study
 	# Create folder with content from crawler
-	folder <- Folder(list(parentId='syn1488308',
+	folder <- Folder(list(parentId='syn1533267',
 					name=names(ae)[i],
 					description = ae[[i]]$description))
 	annotValue(folder, 'numSamples') = as.numeric(ae[[i]]$numSamples)
@@ -53,7 +53,9 @@ for(i in 1:length(ae)){
 						parentId=propertyValue(rawFolder, 'id'),
 						platform = strsplit(ae[[i]]$platform, ',')[[1]],
 						species = strsplit(ae[[i]]$species, ',')[[1]]))
-		annotValue(rawDataEntity, 'repository') <- 'NCBI GEO'
+		annotValue(rawDataEntity, 'repository') <- 'Array Express'
+		annotValue(rawDataEntity, 'status') <- 'raw'
+		annotValue(rawDataEntity, 'study') <- names(ae)[i]
 		fileSizeInBytes <- .getFileSize(urls[j])
 		annotValue(rawDataEntity, 'fileSize') <- .prettifyFileSize(fileSizeInBytes)
 		rawDataEntity <- .addExternalLocationToAeRawDataEntity(rawDataEntity, urls[j])
@@ -117,3 +119,15 @@ for(i in 1:length(ae)){
 	return(curlInfo$content.length.download)
 }
 
+
+for(i in 2:nrow(qry2)){
+	cat("\r",i)
+	ent <- getEntity(qry2[i,2]); 
+	annotValue(ent, 'repository') <- 'Array Express'; 
+	annotValue(ent, 'status') <- 'raw';
+	parent1 <- propertyValue(ent, 'parentId')
+	ent2 <- getEntity(parent1)
+	parent2 <- propertyValue(ent2, 'parentId')
+	ent3 <- getEntity(parent2)
+	annotValue(ent, 'study') <- propertyValue(ent3, 'name')
+}
