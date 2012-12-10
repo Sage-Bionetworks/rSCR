@@ -1,6 +1,4 @@
-% \VignetteDepends{lme4, splines, corpcor}
-% \VignetteIndexEntry{snm Tutorial}
-% \VignettePackage{snm}
+% \VignetteIndexEntry{tcga Tutorial}
 \documentclass[11pt]{article}
 
 \usepackage{epsfig}
@@ -60,7 +58,6 @@ Synapse.
 
 The next step here is to write code that processes each batch.  Then write code
 that joins them into a single matrix.
-
 
 \section{Preprocessing metadata}
 Next we need to update the metadata.  This is accomplished via the

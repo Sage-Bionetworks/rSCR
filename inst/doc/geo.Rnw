@@ -1,6 +1,4 @@
-% \VignetteDepends{lme4, splines, corpcor}
-% \VignetteIndexEntry{snm Tutorial}
-% \VignettePackage{snm}
+% \VignetteIndexEntry{geo Tutorial}
 \documentclass[11pt]{article}
 
 \usepackage{epsfig}

@@ -1,6 +1,5 @@
-% \VignetteDepends{lme4, splines, corpcor}
-% \VignetteIndexEntry{snm Tutorial}
-% \VignettePackage{snm}
+% \VignetteIndexEntry{rSCR Tutorial}
+% \VignettePackage{rSCR}
 \documentclass[11pt]{article}
 
 \usepackage{epsfig}
@@ -46,32 +45,6 @@ providing users with the ability to access tens of thousands of studies,
 all processed with a single strategy, as well as curated metadata that 
 synchronizes vocabulary across studies.  
 
-A key component of the SCR is activating data.  We use the phrase data 
-activation to describe the process that begins with identifying the raw, 
-unprocessed versions of data, transforming them to account for the effects 
-of confounders and to perform useful summarizations that simplify 
-downstream analysis, and, finally, loading them into Synapse to facilitate their 
-use by the entire research community.  At the time of this writing we have activated 
-more than 10,000 distinct experiments from publicly available repositories, including 
-NCBI GEO, Array Express, TCGA, TG-Gate, as well as the recently released CCLE and 
-Sanger cell line compendiums.
-
-All of these data are made available through the SCR project, allowing anyone to 
-access them in seconds via the Synapse clients.  The purpose of the rSCR library is
-to provide a set of convenience functions for finding and accessing activated data sets.
-Many questions about these functions will hopefully be answered by the documentation or
-references.  As with any R package, detailed information on functions, their arguments and
-values, can be obtained in the help files.  Any questions or problems regarding the
-\Rpackage{rSCR} package will most efficiently be addressed by contacting us 
-at: \texttt{data.activation@sagebase.org}. 
-\\
-
-The remainder of this document is organized as follows.  In section \ref{Key Concepts} we 
-introduce a few key ideas.  In section \ref{File Layout} we describe the general layout of 
-activated data. In section \ref{Finding and Downloading Data} we describe 
-how to locate and then download data sets of interest in the SCR.  In section \ref{Adding Data}
-we describe how to add your data to the SCR.
-
 \section{Getting Started With Synapse}
 First, new users will need to create a Synapse account.  You don't a special account to acess the SCR,
 so if you've already created one then skip ahead.  Otherwise, follow this link to get an account:
@@ -81,14 +54,6 @@ Whenever you're accessing Synapse via the R client you'll need to log in.  If my
 john.doe@gmail.com and 'dataRox', then simply type the following:
 
 synapseLogin('john.doe@gmail.com', 'dataRox')
-
-If this is your first time working with Synapse 
-
-1. Synapse Account
-2. Loggin in
-3. Browsing in the web client
-4. Project, Folder, and Data entities
-5. Properties and annotations
 
 \section{Data Layout}
 1. Folders, data entities, and annotations
