@@ -73,9 +73,9 @@ updateGEO <- function(id){
 	return(rawDataEntity)
 }
 
-.addExternalLocation <- function(geo,i, rawDataEntity, alreadyCreatedStudies){
+.addExternalLocation <- function(geo,i, rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies){
 	id <- match(rownames(geo)[i], alreadyCreatedStudies$study.name)
-	
+	fileSizeInBytes <- .getFileSize(geo$layer.url[i])
 	if(!is.na(id)){
 		# Study exists, so raw data might be there already.
 		qry <- synapseQuery(paste('select id, name from entity where entity.parentId=="', alreadyCreatedStudies$study.id[id], '"',sep=""))
@@ -115,7 +115,7 @@ updateGEO <- function(id){
 	rawDataEntity <- .createRawDataEntity(geo,i,folder,rawFolder)
 	
 	# Add the external locations, checking first to see if we've previously stored it in the old SCR.
-	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, alreadyCreatedStudies)
+	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies)
 	if(class(rawDataEntity) != "Data"){
 		return(NA)
 	}

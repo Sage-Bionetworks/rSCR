@@ -8,8 +8,7 @@ updateArrayExpress <- function(id){
 	alreadyCreatedFolders <- synapseQuery('select id, name from entity where entity.parentId=="syn1488308"')
 	if(!is.null(alreadyCreatedFolders )){
 		ae <- ae[setdiff(names(ae), alreadyCreatedFolders$entity.name)]
-	}
-	
+	}	
 # Anything that's new should be added
 	for(i in 1:length(ae)){
 		cat("\n\n", i)
@@ -29,7 +28,7 @@ updateArrayExpress <- function(id){
 .contributeArrayExpressStudy <- function(ae, i, maxFileSize=(1 * 1073741824)){
 	# For each ae study
 	# Create folder with content from crawler
-	folder <- Folder(list(parentId='syn1488308',
+	folder <- Folder(list(parentId='syn1533267',
 					name=names(ae)[i],
 					description = ae[[i]]$description))
 	annotValue(folder, 'numSamples') = as.numeric(ae[[i]]$numSamples)
@@ -55,7 +54,9 @@ updateArrayExpress <- function(id){
 						parentId=propertyValue(rawFolder, 'id'),
 						platform = strsplit(ae[[i]]$platform, ',')[[1]],
 						species = strsplit(ae[[i]]$species, ',')[[1]]))
-		annotValue(rawDataEntity, 'repository') <- 'NCBI GEO'
+		annotValue(rawDataEntity, 'repository') <- 'Array Express'
+		annotValue(rawDataEntity, 'status') <- 'raw'
+		annotValue(rawDataEntity, 'study') <- names(ae)[i]
 		fileSizeInBytes <- .getFileSize(urls[j])
 		annotValue(rawDataEntity, 'fileSize') <- .prettifyFileSize(fileSizeInBytes)
 		rawDataEntity <- .addExternalLocationToAeRawDataEntity(rawDataEntity, urls[j])
@@ -119,3 +120,15 @@ updateArrayExpress <- function(id){
 	return(curlInfo$content.length.download)
 }
 
+
+for(i in 2:nrow(qry2)){
+	cat("\r",i)
+	ent <- getEntity(qry2[i,2]); 
+	annotValue(ent, 'repository') <- 'Array Express'; 
+	annotValue(ent, 'status') <- 'raw';
+	parent1 <- propertyValue(ent, 'parentId')
+	ent2 <- getEntity(parent1)
+	parent2 <- propertyValue(ent2, 'parentId')
+	ent3 <- getEntity(parent2)
+	annotValue(ent, 'study') <- propertyValue(ent3, 'name')
+}
