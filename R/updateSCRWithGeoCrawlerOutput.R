@@ -125,17 +125,22 @@ updateGEO <- function(id){
 	rawDataEntity <- .createRawDataEntity(geo,i,folder,rawFolder)
 	
 	# Add the external locations, checking first to see if we've previously stored it in the old SCR.
-	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies)
+	tmp <- .addExternalLocation(geo,i,rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies)
+	rawDataEntity <- tmp$entity
+	destfile <- tmp$file
 	if(class(rawDataEntity) != "Data"){
 		return(NA)
 	}
 	# Create it in synapse
 	rawDataEntity <- createEntity(rawDataEntity)
+	# Move the downloaded entity into the cache so we don't have to download it again.
+	path <- paste(gsub("/archive.zip_unpacked", "", rawDataEntity$cacheDir), "/", basename(geo$layer.url[i]), sep="")
+	file.copy(destfile, path, overwrite=TRUE)
 	cat(propertyValue(rawDataEntity,'id'), "\n")
 	return(rawDataEntity)
 }
 
-.addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(1 * 1073741824), numRetries=20, keep=FALSE){
+.addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(1 * 1073741824), numRetries=20, keep=TRUE){
 	fileSize <- .getFileSize(url)
 	if(fileSize > maxFileSize){
 		# File is more than 20GB large.
@@ -160,10 +165,10 @@ updateGEO <- function(id){
 	# Download successful.  Add it and return the entity	
 	propertyValue(entity, 'md5') <- as.character(tools::md5sum(destfile))
 	propertyValue(entity, 'locations') <- list(list(path=url, type="external"))
-	if(isTRUE(keep)){
-		file.remove(destfile)
-	}
-	entity
+#	if(isTRUE(keep)){
+#		file.remove(destfile)
+#	}
+	list(entity=entity, file=destfile)
 }
 
 
