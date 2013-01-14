@@ -102,7 +102,7 @@ ids <- which(sapply(sapply(ents, function(x){ names(x$objects)}),length) == 2)
 ents <- ents[ids]
 toProcess <- toProcess[ids,]
 
-for(i in 3:length(ents)){
+for(i in 6:length(ents)){
 	newName <- gsub('_processed', '', propertyValue(ents[[i]],'name'))
 	newName <- paste(newName, '_pd.genomewidesnp.6_probe.tsv', sep="")
 	parentId <- toProcess[i,4]

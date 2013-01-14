@@ -97,7 +97,7 @@ updateGEO <- function(id){
 	}else{
 		# New data, so download to calculate md5.
 		if(fileSizeInBytes < maxFileSize){
-			rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
+			rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i], maxFileSize)
 		}else{
 			return(NA)
 		}
