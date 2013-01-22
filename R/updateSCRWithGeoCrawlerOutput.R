@@ -1,5 +1,5 @@
 
-updateGEO <- function(id){ 
+updateGEO <- function(){ 
 # run and return output from the GEO crawler. 
 	geoCrawlerOutput <- loadEntity('syn1468623');# crawlNcbiGeo()
 	geo <- geoCrawlerOutput$objects$geo	
@@ -11,7 +11,7 @@ updateGEO <- function(id){
 	
 # Anything that's new should be added
 	for(i in 1:nrow(geo)){
-		cat("\n\n", i)
+		cat("\n\n", i, "\t", rownames(geo)[i])
 		res <- try(.contributeGeoStudy(geo, i, maxFileSize=(50 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
 		numRetries <- 1;
 		while(class(res) == "try-error") {

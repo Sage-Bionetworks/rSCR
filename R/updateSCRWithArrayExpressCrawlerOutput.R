@@ -121,14 +121,3 @@ updateArrayExpress <- function(id){
 }
 
 
-for(i in 2:nrow(qry2)){
-	cat("\r",i)
-	ent <- getEntity(qry2[i,2]); 
-	annotValue(ent, 'repository') <- 'Array Express'; 
-	annotValue(ent, 'status') <- 'raw';
-	parent1 <- propertyValue(ent, 'parentId')
-	ent2 <- getEntity(parent1)
-	parent2 <- propertyValue(ent2, 'parentId')
-	ent3 <- getEntity(parent2)
-	annotValue(ent, 'study') <- propertyValue(ent3, 'name')
-}

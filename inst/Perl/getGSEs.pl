@@ -174,7 +174,7 @@ sub getInfo {
 		if (/Name=\"suppFile/) {
 			/>([^<]+)/;
 			my $tmp = $1;
-			if ( $tmp =~ /CEL/ or $tmp =~ /\.txt/) {
+			if ( $tmp =~ /CEL/ or $tmp =~ /TXT/) {
 				$suppFile = 'TRUE';
 			}
 			else {
