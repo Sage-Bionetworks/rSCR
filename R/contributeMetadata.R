@@ -47,6 +47,8 @@ toProcess <- toProcess[which(toProcess$entity.platform != 'hgu133plus2'),]
 
 qry <- synapseQuery('select id, name, numSamples from entity where entity.benefactorId == "syn1450028" and entity.status=="processed"')
 
+
+
 newEnts <- list()
 # Move each one over
 for(i in 32:nrow(toProcess)){
@@ -96,11 +98,6 @@ for(i in 32:nrow(toProcess)){
 	newEnt
 }
 
-toProcess <- toProcess[grep("pd.genome", toProcess$entity.platform),]
-ents <- sapply(toProcess$entity.id, loadEntity)
-ids <- which(sapply(sapply(ents, function(x){ names(x$objects)}),length) == 2)
-ents <- ents[ids]
-toProcess <- toProcess[ids,]
 
 for(i in 6:length(ents)){
 	newName <- gsub('_processed', '', propertyValue(ents[[i]],'name'))
@@ -220,7 +217,6 @@ for(i in 6:length(ents)){
 	
 }
 
-
 .prettifyFileSize <- function(fileSize){
 	if(fileSize > 1073741824){
 		# Its bigger than a gigabyte, so translate to something GB
@@ -235,11 +231,10 @@ for(i in 6:length(ents)){
 	}
 }
 
-
-.moveMetadata <- function(inputId, study,parentId){
+.moveMetadata <- function(inputId, study, parentId){
 	parent <- getEntity(parentId)
 	ent <- loadEntity(inputId)
-	content <- read.table(file.path(ent$cacheDir, ent$files),sep="\t",stringsAsFactors=FALSE)
+	content <- read.table(file.path(ent$cacheDir, ent$files),sep="\t",stringsAsFactors=FALSE,header=TRUE)
 	newName <- paste(study,'_metadata.tsv', sep="")
 	eme <- .writeEntity(content, newName)
 	ent <- Data(list(name=newName,parentId=parentId))

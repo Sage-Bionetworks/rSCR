@@ -1,19 +1,19 @@
-Probe Tab File	CDF File	String	Species	GPL_ID			
-HG-Focus.probe_tab	HG-Focus.CDF	hgfocus	human	GPL201			
-HG-U133A_2.probe_tab	HG-U133A_2.cdf	hgu133a2	human	GPL571			
-HG-U133A.probe_tab	HG-U133A.cdf	hgu133a	human	GPL96			
-HG-U133B.probe_tab	HG-U133B.cdf	hgu133b	human	GPL97			
-HG-U133_Plus_2.probe_tab	HG-U133_Plus_2.cdf	hgu133plus2	human	GPL570			
-HG_U95Av2.probe_tab	HG_U95Av2.CDF	hgu95av2	human	GPL8300			
-HG_U95B.probe_tab	HG_U95B.CDF	hgu95b	human	GPL92			
-HG_U95C.probe_tab	HG_U95C.CDF	hgu95c	human	GPL93			
-HG_U95D.probe_tab	HG_U95D.CDF	hgu95d	human	GPL94			
-HG_U95E.probe_tab	HG_U95E.CDF	hgu95e	human	GPL95			
-HT_HG-U133A.probe_tab	HT_HG-U133A.cdf	hthgu133a	human	GPL3921			
-HT_HG-U133B.probe_tab	HT_HG-U133B.cdf	hthgu133b	human	GPL9197			
-HT_MG-430A.probe_tab	HT_MG-430A.cdf	htmg430a	mouse	GPL8759			
-HT_MG-430B.probe_tab	HT_MG-430B.cdf	htmg430b	mouse	GPL8760			
-HuEx-1_0-st-v2.probe.tab	2560	huex10stv2	human	GPL5175			
+Probe Tab File	CDF File	String	Species	GPL_ID
+HG-Focus.probe_tab	HG-Focus.CDF	hgfocus	human	GPL201
+HG-U133A_2.probe_tab	HG-U133A_2.cdf	hgu133a2	human	GPL571
+HG-U133A.probe_tab	HG-U133A.cdf	hgu133a	human	GPL96
+HG-U133B.probe_tab	HG-U133B.cdf	hgu133b	human	GPL97
+HG-U133_Plus_2.probe_tab	HG-U133_Plus_2.cdf	hgu133plus2	human	GPL570
+HG_U95Av2.probe_tab	HG_U95Av2.CDF	hgu95av2	human	GPL8300
+HG_U95B.probe_tab	HG_U95B.CDF	hgu95b	human	GPL92
+HG_U95C.probe_tab	HG_U95C.CDF	hgu95c	human	GPL93
+HG_U95D.probe_tab	HG_U95D.CDF	hgu95d	human	GPL94
+HG_U95E.probe_tab	HG_U95E.CDF	hgu95e	human	GPL95
+HT_HG-U133A.probe_tab	HT_HG-U133A.cdf	hthgu133a	human	GPL3921
+HT_HG-U133B.probe_tab	HT_HG-U133B.cdf	hthgu133b	human	GPL9197
+HT_MG-430A.probe_tab	HT_MG-430A.cdf	htmg430a	mouse	GPL8759
+HT_MG-430B.probe_tab	HT_MG-430B.cdf	htmg430b	mouse	GPL8760
+HuEx-1_0-st-v2.probe.tab	2560	huex10stv2	human	GPL5175
 HuGene-1_0-st-v1.hg19.probe.tab	1050	hugene10stv1	human	GPL6244
 HuGene-1_1-st-v1.hg18.probe.tab	990	hugene11stv1	human	GPL11532
 MG_U74Av2.probe_tab	MG_U74Av2.CDF	mgu74av2	mouse	GPL81
@@ -45,3 +45,4 @@ Agilent-014868	2514868	agilentG4122F	mouse	GPL4134
 Agilent-011978	2511978	agilentG4121A	mouse	GPL891
 Agilent-014693	2514693	agilent244a	human	GPL4091
 Agilent-014879	2514879	agilentG4131F	rat	GPL4135
+Agilent-16014698	2514698	agilentG4412A human GPL4093

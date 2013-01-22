@@ -12,10 +12,10 @@ updateGEO <- function(id){
 # Anything that's new should be added
 	for(i in 1:nrow(geo)){
 		cat("\n\n", i)
-		res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
+		res <- try(.contributeGeoStudy(geo, i, maxFileSize=(50 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
 		numRetries <- 1;
 		while(class(res) == "try-error") {
-			res <- try(.contributeGeoStudy(geo, i, maxFileSize=(1 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
+			res <- try(.contributeGeoStudy(geo, i, maxFileSize=(50 * 1073741824), alreadyCreatedStudies=alreadyCreatedStudies), silent=TRUE)
 			numRetries <- numRetries + 1
 			if(numRetries > 10){ 
 				#stop("Tried 10 times to build the entity with no success!")
@@ -26,6 +26,11 @@ updateGEO <- function(id){
 }
 
 .createFolderForStudy <- function(geo, i){
+	# If folder exists, return the id
+	qry <- synapseQuery(paste('select id, name from folder where folder.parentId=="syn1491485" and folder.name=="',rownames(geo)[i] ,'"',sep=""))
+	if(!is.null(qry)){
+		return(getEntity(qry$folder.id))
+	}
 	# Create folder with content from crawler
 	folder <- Folder(list(parentId='syn1491485',
 					name=rownames(geo)[i],
@@ -48,6 +53,11 @@ updateGEO <- function(id){
 }
 
 .createRawFolder <- function(geo, i, folder){
+	qry <- synapseQuery(paste('select id, name from folder where folder.parentId=="',propertyValue(folder, 'id'),'" and folder.name=="raw data"',sep=""))
+	if(!is.null(qry)){
+		return(getEntity(qry$folder.id))
+	}
+	
 	rawFolder <- Folder(list(parentId=propertyValue(folder, 'id'),
 					name='raw data',
 					description = geo$description[i]))
@@ -73,7 +83,7 @@ updateGEO <- function(id){
 	return(rawDataEntity)
 }
 
-.addExternalLocation <- function(geo,i, rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies){
+.addExternalLocation <- function(geo,i, rawDataEntity, maxFileSize=(1 * 1073741824), alreadyCreatedStudies){
 	id <- match(rownames(geo)[i], alreadyCreatedStudies$study.name)
 	fileSizeInBytes <- .getFileSize(geo$layer.url[i])
 	if(!is.na(id)){
@@ -89,7 +99,7 @@ updateGEO <- function(id){
 		}else{
 			# New data, so download to calculate md5.
 			if(fileSizeInBytes < maxFileSize){
-				rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i])
+				rawDataEntity <- .addExternalLocationToGeoRawDataEntity(rawDataEntity, geo$layer.url[i], maxFileSize)
 			}else{
 				return(NA)
 			}
@@ -115,17 +125,22 @@ updateGEO <- function(id){
 	rawDataEntity <- .createRawDataEntity(geo,i,folder,rawFolder)
 	
 	# Add the external locations, checking first to see if we've previously stored it in the old SCR.
-	rawDataEntity <- .addExternalLocation(geo,i,rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies)
+	tmp <- .addExternalLocation(geo,i,rawDataEntity, maxFileSize=maxFileSize, alreadyCreatedStudies)
+	rawDataEntity <- tmp$entity
+	destfile <- tmp$file
 	if(class(rawDataEntity) != "Data"){
 		return(NA)
 	}
 	# Create it in synapse
 	rawDataEntity <- createEntity(rawDataEntity)
+	# Move the downloaded entity into the cache so we don't have to download it again.
+	path <- paste(gsub("/archive.zip_unpacked", "", rawDataEntity$cacheDir), "/", basename(geo$layer.url[i]), sep="")
+	file.copy(destfile, path, overwrite=TRUE)
 	cat(propertyValue(rawDataEntity,'id'), "\n")
 	return(rawDataEntity)
 }
 
-.addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(1 * 1073741824), numRetries=20){
+.addExternalLocationToGeoRawDataEntity <- function(entity, url, maxFileSize=(1 * 1073741824), numRetries=20, keep=TRUE){
 	fileSize <- .getFileSize(url)
 	if(fileSize > maxFileSize){
 		# File is more than 20GB large.
@@ -150,9 +165,12 @@ updateGEO <- function(id){
 	# Download successful.  Add it and return the entity	
 	propertyValue(entity, 'md5') <- as.character(tools::md5sum(destfile))
 	propertyValue(entity, 'locations') <- list(list(path=url, type="external"))
-	file.remove(destfile)
-	entity
+#	if(isTRUE(keep)){
+#		file.remove(destfile)
+#	}
+	list(entity=entity, file=destfile)
 }
+
 
 .prettifyFileSize <- function(fileSize){
 	if(fileSize > 1073741824){
